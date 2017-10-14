@@ -29,7 +29,7 @@ Can run the editor without IDE, may be useful for smaller changes or on low powe
 
 3. In the project selector browse to the /ParkourGame/ folder and select ParkourGame.uproject
 
-4. When the editor appears you will be able to run like normal, you can edit code and use the editors built in hot-reload compiler to make changes (this can be unstable and often a full editor reload is required)
+4. When the editor appears you will be able to run like normal, you can edit code and use the Editor's built in hot-reload compiler to make changes (this can be unstable and often a full editor reload is required)
 
 5. (optional) If you later open an IDE with the game solution you can use the Attach to Process tool to link the debugger directly to the editor
 
