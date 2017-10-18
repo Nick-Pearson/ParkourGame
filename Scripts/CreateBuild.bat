@@ -34,8 +34,8 @@ cd Builds
 if exist %githash% (
 	echo A build for %githash% already exists, would you like to overwrite it?
 	set delBuild=
-	set /p delBuild=[Y/n]?: 
-	
+	set /p delBuild=[Y/n]?:
+
 	if "%delBuild:~0,1%"=="Y" (
 		rmdir /q /s %githash%
 	) else (
@@ -55,7 +55,6 @@ cd ..\..\Scripts
 echo.
 echo Building Client
 
-set errorlevel=0
 @echo on
 call "%UNREAL_PATH%\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="%projdir%\ParkourGame\ParkourGame.uproject" -noP4 -platform=Win64 -clientconfig=Development -serverconfig=Development -cook -allmaps -build -stage -pak -archive -archivedirectory="%projdir%\Builds\%githash%\Client" > Buildlog_%githash%_Client.txt
 @echo off
@@ -74,7 +73,6 @@ if not exist %projdir%\Builds\%githash%\Client\WindowsNoEditor\ParkourGame.exe (
 echo.
 echo Building Server
 
-set errorlevel=0
 @echo on
 call "%UNREAL_PATH%\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="%projdir%\ParkourGame\ParkourGame.uproject" -noP4 -platform=Win64 -clientconfig=Development -serverconfig=Development -cook -server -serverplatform=Win64 -noclient -build -stage -pak -archive -archivedirectory="%projdir%\Builds\%githash%\Server" > Buildlog_%githash%_Server.txt
 @echo off
