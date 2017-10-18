@@ -73,14 +73,14 @@ set -x
 set +x
 
 # check binary exists
-if [ -e "$projdir/Builds/$githash/Server/LinuxNoEditor/ParkourGameServer.out" (
+if [ -e "$projdir/Builds/$githash/Server/LinuxNoEditor/ParkourGameServer.out" ]; then
 	echo ""
 	echo "*** Server built successfully ***"
-) else (
+else
 	echo ""
 	echo "*** Server built with errors ***"
 	echo "NOTE: Servers must be built from Github Source"
 	exit 1
-)
+fi
 
 cd $startingdir
