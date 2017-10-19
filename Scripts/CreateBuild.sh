@@ -44,14 +44,14 @@ cd $githash
 mkdir Client
 mkdir Server
 
-cd ..\..\Scripts
+cd ../../Scripts
 
 # CLIENT
 echo ""
 echo "Building Client"
 
 set -x
-"$UNREAL_PATH/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun -project="$projdir/ParkourGame/ParkourGame.uproject" -noP4 -platform=Linux -clientconfig=Development -serverconfig=Development -cook -allmaps -build -stage -pak -archive -archivedirectory="$projdir/Builds/$githash/Client" > Buildlog_${githash}_Client.txt
+"$UNREAL_PATH/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun -project="$projdir/ParkourGame/ParkourGame.uproject" -noP4 -platform=Linux -clientconfig=Development -serverconfig=Development -cook -allmaps -build -stage -pak -archive -archivedirectory="$projdir/Builds/$githash/Client" > Buildlog_${githash}_Client.txt
 set +x
 
 # check binary exists
@@ -69,7 +69,7 @@ echo ""
 echo "Building Server"
 
 set -x
-"$UNREAL_PATH/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun -project="$projdir/ParkourGame/ParkourGame.uproject" -noP4 -platform=Win64 -clientconfig=Development -serverconfig=Development -cook -server -serverplatform=Win64 -noclient -build -stage -pak -archive -archivedirectory="$projdir/Builds/$githash/Server" > Buildlog_${githash}_Server.txt
+"$UNREAL_PATH/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun -project="$projdir/ParkourGame/ParkourGame.uproject" -noP4 -platform=Win64 -clientconfig=Development -serverconfig=Development -cook -server -serverplatform=Win64 -noclient -build -stage -pak -archive -archivedirectory="$projdir/Builds/$githash/Server" > Buildlog_${githash}_Server.txt
 set +x
 
 # check binary exists
