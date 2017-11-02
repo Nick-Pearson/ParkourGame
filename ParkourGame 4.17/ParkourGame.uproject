@@ -1,0 +1,18 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{5C1D964E-AD46-B849-8536-17B8161C58C0}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "ParkourGame",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"TargetPlatforms": [
+		"LinuxNoEditor",
+		"MacNoEditor",
+		"WindowsNoEditor"
+	]
+}
