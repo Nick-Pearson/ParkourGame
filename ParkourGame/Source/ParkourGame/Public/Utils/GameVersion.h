@@ -38,7 +38,7 @@ public:
 		return Major == other.Major && Minor == other.Minor && Patch == other.Patch;
 	}
 
-	int32 GetComparisonVal() const
+	uint32 GetComparisonVal() const
 	{
 		return (Major * 10000) + (Minor * 100) + Patch;
 	}
