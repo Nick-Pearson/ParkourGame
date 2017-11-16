@@ -61,6 +61,20 @@ protected:
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
+	void RagdollBody();
+
+	void RagdollArmR();
+
+	void RagdollArmL();
+
+	void RagdollLegR();
+
+	void RagdollLegL();
+
+	void RagdollTorso();
+
+	void RagdollLegs();
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
