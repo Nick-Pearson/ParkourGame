@@ -80,6 +80,15 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AParkourGameCharacter::OnResetVR);
+
+	// Ragdoll controls
+	PlayerInputComponent->BindAction("RagdollBody", IE_Pressed, this, &AParkourGameCharacter::RagdollBody);
+	PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
+	PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
+	PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
+	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
+	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
+	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
 }
 
 
@@ -137,4 +146,47 @@ void AParkourGameCharacter::MoveRight(float Value)
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
 	}
+}
+
+void AParkourGameCharacter::RagdollBody()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetSimulatePhysics(true);
+}
+
+void AParkourGameCharacter::RagdollArmR()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("upperarm_r", true, true);
+}
+
+void AParkourGameCharacter::RagdollArmL()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("upperarm_l", true, true);
+}
+
+void AParkourGameCharacter::RagdollLegR()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_r", true, true);
+}
+
+void AParkourGameCharacter::RagdollLegL()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_l", true, true);
+}
+
+void AParkourGameCharacter::RagdollTorso()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("spine_01", true, true);
+}
+
+void AParkourGameCharacter::RagdollLegs()
+{
+	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_r", true, true);
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_l", true, true);
 }
