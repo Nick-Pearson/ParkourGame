@@ -2,6 +2,32 @@
 
 Kept up to date with notes from latest meetings
 
+## 3. Meeting with Tilo 09/11/17, 2pm Tilo's Office
+
+Not present:
+* David
+
+Notes by Nick
+
+General Notes:
+* IK driving physics will be difficult but is worth us persuing
+* Asked for a windows machine to be made availible for development use
+* Requested ports to be opened (they may be only opened on certain rows)
+* Need a proper prototype test map
+* Need to ensure we are integrating our work regularly
+* Tilo wants us to consider the idea of a custom controller, also to think about our third key technology
+
+__Group meeting after:__
+
+New Tasks:
+* Set up a system so we can have constraints along the arms so that the arms can support the body in ragdoll
+* Research combining physics with IK - what works by default in unreal
+* Writing a custom IK solver
+* Using a sphere trace around the player to maintain a list of possible IK targets
+* Sort function that can take a large list of input points and choose IK targets for left and right hands from the list based
+
+Plan to meet again on Monday
+
 ## 2. Meeting 06/11/17, 1pm MVB
 
 Not present:
