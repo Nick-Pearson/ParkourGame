@@ -3,6 +3,8 @@
 #include "ParkourGameCharacter.h"
 
 #include "Private/Physics/ConstraintManager.h"
+#include "ParkourTypes.h"
+#include "Private/Utils/ParkourHelperLibrary.h"
 
 // Engine
 #include "HeadMountedDisplayFunctionLibrary.h"
@@ -53,6 +55,14 @@ AParkourGameCharacter::AParkourGameCharacter()
 	ConstraintManager = CreateDefaultSubobject<UConstraintManager>(TEXT("ConstraintManager"));
 }
 
+
+void AParkourGameCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	SkeletalMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -74,13 +84,6 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AParkourGameCharacter::LookUpAtRate);
 
-	// handle touch devices
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &AParkourGameCharacter::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &AParkourGameCharacter::TouchStopped);
-
-	// VR headset functionality
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AParkourGameCharacter::OnResetVR);
-
 	// Ragdoll controls
 	PlayerInputComponent->BindAction("RagdollBody", IE_Pressed, this, &AParkourGameCharacter::RagdollBody);
 	PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
@@ -89,22 +92,6 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
 	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
 	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
-}
-
-
-void AParkourGameCharacter::OnResetVR()
-{
-	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
-}
-
-void AParkourGameCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
-{
-		Jump();
-}
-
-void AParkourGameCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
-{
-		StopJumping();
 }
 
 void AParkourGameCharacter::TurnAtRate(float Rate)
@@ -150,43 +137,43 @@ void AParkourGameCharacter::MoveRight(float Value)
 
 void AParkourGameCharacter::RagdollBody()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	PlayerMesh->SetSimulatePhysics(true);
 }
 
 void AParkourGameCharacter::RagdollArmR()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("upperarm_r", true, true);
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::RightArm), true, true);
 }
 
 void AParkourGameCharacter::RagdollArmL()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("upperarm_l", true, true);
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::LeftArm), true, true);
 }
 
 void AParkourGameCharacter::RagdollLegR()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_r", true, true);
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::RightLeg), true, true);
 }
 
 void AParkourGameCharacter::RagdollLegL()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_l", true, true);
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::LeftLeg), true, true);
 }
 
 void AParkourGameCharacter::RagdollTorso()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("spine_01", true, true);
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Torso), true, true);
 }
 
 void AParkourGameCharacter::RagdollLegs()
 {
-	USkeletalMeshComponent* PlayerMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_r", true, true);
-	PlayerMesh->SetAllBodiesBelowSimulatePhysics("thigh_l", true, true);
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::RightLeg), true, true);
+	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::LeftLeg), true, true);
 }
