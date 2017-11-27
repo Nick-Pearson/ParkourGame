@@ -2,6 +2,41 @@
 
 Kept up to date with notes from latest meetings
 
+## 4. Meeting 27/11/17, 4pm MVB
+
+Not present:
+* David
+* James
+
+We agreed that we should set more hard goals in future to start to lock down our ideas and keep the project on track
+
+__Jonas:__
+* Researching IK and physics in the engine, found very few useful resources
+* **Going to push debug IK work to github so we can see it**
+* **Working on our own IK solver implementation (Nick to send link to tutorial to help on this)**
+
+__Corin:__
+* **Creating a system to apply physics impluses to the skeleton to move limbs - going to test this on a grab move**
+
+__Ben:__
+* Working on disabling ragdoll states, and preventing capsule move during ragdoll. **continuing on this**
+
+__Nick:__
+* Cleaning up C++ so we can avoid hard references to bone names
+* **Networking ragdoll state of the player so clients can see ragdolling**
+
+__Gameplay Discussion:__
+* Can see a 'mini-game' style input where the user has to tap a button quickly to perform a difficult action, could be used to punish players who fail to sucessfully complete a parkour move. **Nick to find references in other games and ask David to create a demo of this feature**
+
+* Concern that the data structure we use to represent parkour moves and hand positions may hinder us in future - not sure whether a plane or line is best. For the time being we will implement a base class with the same functions so that the calling code doesn't have to worry about whether they have a plane or a line.  **Corin to look into this, might require more thought to manage these struct pointers and avoid memory leaks**
+
+# 4. Meeting 23/11/17, ~4pm MVB
+
+Not present:
+* Jonas
+
+Met briefly in Back lab to set up team lab machine and ran a test with multiple players in the Windows lab
+
 ## 3. Meeting with Tilo 09/11/17, 2pm Tilo's Office
 
 Not present:
@@ -93,5 +128,3 @@ __Ben:__
 __David:__
 * **Researching shape trace collision for hands and feet, possibly will need a custom trace channel**
 * **Setting up basic state machine for tracking when the characters hands/feet are attached to something (#14)**
-
-
