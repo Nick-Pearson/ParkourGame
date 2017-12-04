@@ -49,6 +49,8 @@ AParkourGameCharacter::AParkourGameCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	InRagdoll = false;
+
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
@@ -92,6 +94,12 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
 	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
 	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
+}
+
+void AParkourGameCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	CapsuleToRagdoll();
 }
 
 void AParkourGameCharacter::TurnAtRate(float Rate)
@@ -139,6 +147,7 @@ void AParkourGameCharacter::RagdollBody()
 {
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	PlayerMesh->SetSimulatePhysics(true);
+	InRagdoll = true;
 }
 
 void AParkourGameCharacter::RagdollArmR()
@@ -176,4 +185,14 @@ void AParkourGameCharacter::RagdollLegs()
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::RightLeg), true, true);
 	PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::LeftLeg), true, true);
+}
+
+void AParkourGameCharacter::CapsuleToRagdoll()
+{
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	if (InRagdoll == true) {
+		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		Capsule->SetWorldLocation(SocketLocation);
+	}
 }
