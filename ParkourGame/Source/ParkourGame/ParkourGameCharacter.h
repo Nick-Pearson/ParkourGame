@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 
+#include "ParkourTypes.h"
 #include "ParkourGameCharacter.generated.h"
 
 class USpringArmComponent;
@@ -37,6 +38,8 @@ public:
 	AParkourGameCharacter();
 
 	virtual void PostInitializeComponents() override;
+	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 
@@ -93,5 +96,22 @@ public:
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
 	FORCEINLINE USkeletalMeshComponent* GetSkeletalMesh() const { return SkeletalMesh; }
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void SetFullRagdoll(bool bIsFullRagdoll);
+
+private:
+
+	// Function called when the client recieves an update to the ragdoll state
+	UFUNCTION()
+	void OnRep_RagdollState();
+
+	//set this variable to be replicated to all clients
+	// array of bools indicating if that body part is in ragdoll, has extra value at the end for full body ragdoll
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_RagdollState)
+	uint32 m_RagdollState[(int32)EBodyPart::MAX + 1];
 };
 
