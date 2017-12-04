@@ -25,4 +25,6 @@ namespace FParkourFNames
 	const extern FName Bone_Spine_01;
 	const extern FName Bone_Spine_02;
 	const extern FName Bone_Spine_03;
+
+	const extern FName Bone_Pelvis;
 }

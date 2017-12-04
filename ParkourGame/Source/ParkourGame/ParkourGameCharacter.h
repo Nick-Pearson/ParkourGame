@@ -39,6 +39,9 @@ public:
 	virtual void PostInitializeComponents() override;
 
 public:
+	bool InRagdoll;
+
+public:
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
@@ -49,6 +52,9 @@ public:
 	float BaseLookUpRate;
 
 protected:
+
+	virtual void Tick(float DeltaSeconds);
+
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 
@@ -80,6 +86,8 @@ protected:
 	void RagdollTorso();
 
 	void RagdollLegs();
+
+	void CapsuleToRagdoll();
 
 
 	// APawn interface
