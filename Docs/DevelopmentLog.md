@@ -2,6 +2,35 @@
 
 Kept up to date with notes from latest meetings
 
+## 5. Meeting 05/12/17, 4pm MVB
+
+Meeting with Tilo at 2pm on thursday with demo build to show to him and a 4th year student
+
+__Jonas:__
+* Committed ik-test work 
+* **Working on refactoring ik system - not required for the demo**
+
+__David:__
+* **Working on QTE event task - not required for demo**
+
+__Ben:__
+* Committed work preventing collision capsule from moving when in ragdoll
+* **Looking at disabling ragdoll**
+* **Going to look at physics constraints for the 'grab' action if there is time before the demo**
+
+__James:__
+* We all agreed most networking stuff is looking good currently for demo
+* **Working on a c++ function for the lobby allowing resizing based on DNS results for servers**
+
+__Corin:__
+* Updated previous work to be compatible with 4.18
+* **Working on cleaning up hand position work so we can use it in the demo**
+
+__Nick:__
+* **Going to merge in the ik-test work to main branch**
+* Working on hacking in the ik test work so we can use it in the demo
+* **Going to merge in Capsule work by Ben**
+
 ## 4. Meeting 27/11/17, 4pm MVB
 
 Not present:
