@@ -7,6 +7,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Math/UnrealMath.h"
 #include "ParkourMesh.h"
+#include "ParkourTypes.h"
 #include "ParkourGameCharacter.generated.h"
 
 
@@ -17,6 +18,11 @@ enum class EHandSideEnum : uint8
 	HS_Left		UMETA(DisplayName = "Left")
 };
 
+class USpringArmComponent;
+class UCameraComponent;
+class USkeletalMeshComponent;
+class UConstraintManager;
+
 UCLASS(config=Game)
 class AParkourGameCharacter : public ACharacter
 {
@@ -24,14 +30,23 @@ class AParkourGameCharacter : public ACharacter
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	class USpringArmComponent* CameraBoom;
+	USpringArmComponent* CameraBoom;
 
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	class UCameraComponent* FollowCamera;
+	UCameraComponent* FollowCamera;
+
+	/* Skel mesh */
+	UPROPERTY(Transient)
+	USkeletalMeshComponent* SkeletalMesh;
+
+	/* Constraint Manager */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UConstraintManager* ConstraintManager;
+
 public:
 	AParkourGameCharacter();
-
+  
 	virtual void BeginPlay();
 	virtual void EndPlay(EEndPlayReason::Type Reason);
 
@@ -41,6 +56,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<AParkourMesh*> NearbyParkourObjects;
+  
+	virtual void PostInitializeComponents() override;
+	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+public:
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
@@ -57,8 +78,7 @@ public:
 
 protected:
 
-	/** Resets HMD orientation in VR. */
-	void OnResetVR();
+	virtual void Tick(float DeltaSeconds);
 
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
@@ -78,11 +98,21 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 
-	/** Handler for when a touch input begins. */
-	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
+	void RagdollBody();
 
-	/** Handler for when a touch input stops. */
-	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
+	void RagdollArmR();
+
+	void RagdollArmL();
+
+	void RagdollLegR();
+
+	void RagdollLegL();
+
+	void RagdollTorso();
+
+	void RagdollLegs();
+
+	void CapsuleToRagdoll();
 
 	/**
 	* Returns position to direct a given hand with IK
@@ -105,8 +135,27 @@ protected:
 
 public:
 	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	FORCEINLINE USkeletalMeshComponent* GetSkeletalMesh() const { return SkeletalMesh; }
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void SetFullRagdoll(bool bIsFullRagdoll);
+
+private:
+
+	// Function called when the client recieves an update to the ragdoll state
+	UFUNCTION()
+	void OnRep_RagdollState();
+
+	//set this variable to be replicated to all clients
+	// array of bools indicating if that body part is in ragdoll, has extra value at the end for full body ragdoll
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_RagdollState)
+	uint32 m_RagdollState[(int32)EBodyPart::MAX + 1];
 };
 

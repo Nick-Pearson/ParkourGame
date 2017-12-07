@@ -1,6 +1,11 @@
 // Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 
 #include "ParkourGameCharacter.h"
+
+#include "Private/Physics/ConstraintManager.h"
+#include "Private/Utils/ParkourHelperLibrary.h"
+
+// Engine
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -10,6 +15,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Private/ParkourInteractiveZone.h"
 #include "ParkourMesh.h"
+#include "UnrealNetwork.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -48,35 +54,7 @@ AParkourGameCharacter::AParkourGameCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Input
-
-void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
-{
-	// Set up gameplay key bindings
-	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
-
-	PlayerInputComponent->BindAxis("MoveForward", this, &AParkourGameCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &AParkourGameCharacter::MoveRight);
-
-	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
-	// "turn" handles devices that provide an absolute delta, such as a mouse.
-	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("TurnRate", this, &AParkourGameCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-	PlayerInputComponent->BindAxis("LookUpRate", this, &AParkourGameCharacter::LookUpAtRate);
-
-	// handle touch devices
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &AParkourGameCharacter::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &AParkourGameCharacter::TouchStopped);
-
-	// VR headset functionality
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AParkourGameCharacter::OnResetVR);
+	ConstraintManager = CreateDefaultSubobject<UConstraintManager>(TEXT("ConstraintManager"));
 }
 
 void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
@@ -131,31 +109,24 @@ AParkourMesh* AParkourGameCharacter::GetNearestParkourObject()
 	return NearestParkourObject;
 }
 
-void AParkourGameCharacter::OnResetVR()
+void AParkourGameCharacter::PostInitializeComponents()
 {
-	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
+	Super::PostInitializeComponents();
+
+	SkeletalMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
 }
 
-void AParkourGameCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
+void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-		Jump();
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 }
 
-void AParkourGameCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
+void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
-		StopJumping();
-}
-
-void AParkourGameCharacter::TurnAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
-}
-
-void AParkourGameCharacter::LookUpAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+	Super::Tick(DeltaSeconds);
+	CapsuleToRagdoll();
 }
 
 void AParkourGameCharacter::MoveForward(float Value)
@@ -187,7 +158,6 @@ void AParkourGameCharacter::MoveRight(float Value)
 	}
 }
 
-
 FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
 {
 	FVector HandPos;
@@ -214,3 +184,129 @@ FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
 	return box.GetClosestPointTo(HandPos);
 }
 
+void AParkourGameCharacter::TurnAtRate(float Rate)
+{
+	// calculate delta for this frame from the rate information
+	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+}
+
+void AParkourGameCharacter::LookUpAtRate(float Rate)
+{
+	// calculate delta for this frame from the rate information
+	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+}
+
+void AParkourGameCharacter::RagdollBody()
+{
+	SetFullRagdoll(true);
+}
+
+void AParkourGameCharacter::RagdollArmR()
+{
+	SetRagdollOnBodyPart(EBodyPart::RightArm, true);
+}
+
+void AParkourGameCharacter::RagdollArmL()
+{
+	SetRagdollOnBodyPart(EBodyPart::LeftArm, true);
+}
+
+void AParkourGameCharacter::RagdollLegR()
+{
+	SetRagdollOnBodyPart(EBodyPart::RightLeg, true);
+}
+
+void AParkourGameCharacter::RagdollLegL()
+{
+	SetRagdollOnBodyPart(EBodyPart::LeftLeg, true);
+}
+
+void AParkourGameCharacter::RagdollTorso()
+{
+	SetRagdollOnBodyPart(EBodyPart::Torso, true);
+}
+
+void AParkourGameCharacter::RagdollLegs()
+{
+	SetRagdollOnBodyPart(EBodyPart::RightLeg, true);
+	SetRagdollOnBodyPart(EBodyPart::LeftLeg, true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Input
+
+void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
+{
+	// Set up gameplay key bindings
+	check(PlayerInputComponent);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	PlayerInputComponent->BindAxis("MoveForward", this, &AParkourGameCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AParkourGameCharacter::MoveRight);
+
+	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
+	// "turn" handles devices that provide an absolute delta, such as a mouse.
+	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
+	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("TurnRate", this, &AParkourGameCharacter::TurnAtRate);
+	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUpRate", this, &AParkourGameCharacter::LookUpAtRate);
+
+	// Ragdoll controls
+	PlayerInputComponent->BindAction("RagdollBody", IE_Pressed, this, &AParkourGameCharacter::RagdollBody);
+	PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
+	PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
+	PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
+	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
+	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
+	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
+}
+
+bool AParkourGameCharacter::SetRagdollOnBodyPart_Validate(EBodyPart Part, bool bNewRagdoll) { return true; }
+void AParkourGameCharacter::SetRagdollOnBodyPart_Implementation(EBodyPart Part, bool bNewRagdoll)
+{
+	if (!ensureMsgf(Part != EBodyPart::MAX, TEXT("[AParkourGameCharacter::SetRagdollOnBodyPart] Invalid body part enum sent to server"))) return;
+	m_RagdollState[(int32)Part] = bNewRagdoll ? 1 : 0;
+	OnRep_RagdollState();
+}
+
+bool AParkourGameCharacter::SetFullRagdoll_Validate(bool bIsFullRagdoll) { return true; }
+void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
+{
+	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
+	OnRep_RagdollState();
+}
+
+void AParkourGameCharacter::OnRep_RagdollState()
+{
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	
+	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
+	{
+		PlayerMesh->SetSimulatePhysics(true);
+		return;
+	}
+	else
+	{
+		PlayerMesh->SetSimulatePhysics(false);
+	}
+
+	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
+	{
+		PlayerMesh->SetAllBodiesBelowSimulatePhysics(
+			UParkourHelperLibrary::GetRootBoneForBodyPart((EBodyPart)i),
+			m_RagdollState[i] > 0,
+				true);
+	}
+}
+
+void AParkourGameCharacter::CapsuleToRagdoll()
+{
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
+		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		Capsule->SetWorldLocation(SocketLocation);
+	}
+}
