@@ -39,5 +39,8 @@ void UParkourHelperLibrary::GetBoneChainForBodyPart(EBodyPart Part, TArray<FName
 	case EBodyPart::RightLeg:
 		outChain = TArray<FName>({ FParkourFNames::Bone_Thigh_R, FParkourFNames::Bone_Calf_R, FParkourFNames::Bone_Foot_R });
 		break;
+	case EBodyPart::Pelvis:
+		outChain = TArray<FName>({ FParkourFNames::Bone_Pelvis });
+		break;
 	}
 }
