@@ -70,6 +70,12 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 }
 
+void AParkourGameCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	CapsuleToRagdoll();
+}
+
 void AParkourGameCharacter::MoveForward(float Value)
 {
 	if ((Controller != NULL) && (Value != 0.0f))
@@ -213,5 +219,15 @@ void AParkourGameCharacter::OnRep_RagdollState()
 			UParkourHelperLibrary::GetRootBoneForBodyPart((EBodyPart)i),
 			m_RagdollState[i] > 0,
 				true);
+	}
+}
+
+void AParkourGameCharacter::CapsuleToRagdoll()
+{
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
+		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		Capsule->SetWorldLocation(SocketLocation);
 	}
 }

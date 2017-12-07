@@ -6,6 +6,7 @@ enum class EBodyPart : uint8
 	Torso,
 	LeftArm,
 	RightArm,
+	Pelvis,
 	LeftLeg,
 	RightLeg,
 	Head,
