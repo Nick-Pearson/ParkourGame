@@ -4,9 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-
+#include "Components/SkeletalMeshComponent.h"
+#include "Math/UnrealMath.h"
+#include "ParkourMesh.h"
 #include "ParkourTypes.h"
 #include "ParkourGameCharacter.generated.h"
+
+
+UENUM(BlueprintType)
+enum class EHandSideEnum : uint8
+{ //enum for which hand is being used for calculations
+	HS_Right	UMETA(DisplayName = "Right"),
+	HS_Left		UMETA(DisplayName = "Left")
+};
 
 class USpringArmComponent;
 class UCameraComponent;
@@ -36,7 +46,17 @@ class AParkourGameCharacter : public ACharacter
 
 public:
 	AParkourGameCharacter();
+  
+	virtual void BeginPlay();
+	virtual void EndPlay(EEndPlayReason::Type Reason);
 
+	/*Include Handside enum for hand targeting calculations*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Enum)
+		EHandSideEnum HandSideEnum;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSet<AParkourMesh*> NearbyParkourObjects;
+  
 	virtual void PostInitializeComponents() override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -50,6 +70,11 @@ public:
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
+
+	UFUNCTION()
+	void BeginOverlap(AActor* OverlappedActor, AActor* OtherActor);
+	UFUNCTION()
+	void EndOverlap(AActor* OverlappedActor, AActor* OtherActor);
 
 protected:
 
@@ -89,7 +114,21 @@ protected:
 
 	void CapsuleToRagdoll();
 
+	/**
+	* Returns position to direct a given hand with IK
+	* @param handSide	Used to determine whether the function is calculating for the left or right hand
+	*/
 
+	UFUNCTION(BlueprintCallable)
+	FVector GetParkourHandTarget(EHandSideEnum handSide);
+
+	/**
+	* Returns pointer to closest ParkourMesh object
+	*/
+	UFUNCTION(BlueprintCallable)
+	AParkourMesh* GetNearestParkourObject();
+
+protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface

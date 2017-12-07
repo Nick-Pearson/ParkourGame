@@ -13,6 +13,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Private/ParkourInteractiveZone.h"
+#include "ParkourMesh.h"
 #include "UnrealNetwork.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -55,6 +57,57 @@ AParkourGameCharacter::AParkourGameCharacter()
 	ConstraintManager = CreateDefaultSubobject<UConstraintManager>(TEXT("ConstraintManager"));
 }
 
+void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
+{
+	AParkourMesh* Other = Cast<AParkourMesh>(OtherActor);
+
+	if (Other != nullptr) 
+	{
+		NearbyParkourObjects.Add(Other);
+	}
+
+}
+
+void AParkourGameCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
+	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
+}
+
+void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
+{
+	Super::EndPlay(Reason);
+	OnActorBeginOverlap.RemoveDynamic(this, &AParkourGameCharacter::BeginOverlap);
+	OnActorEndOverlap.RemoveDynamic(this, &AParkourGameCharacter::EndOverlap);
+}
+
+void AParkourGameCharacter::EndOverlap(AActor* OverlappedActor, AActor* OtherActor)
+{
+	AParkourMesh* Other = Cast<AParkourMesh>(OtherActor);
+
+	if (Other != nullptr)
+	{
+		NearbyParkourObjects.Remove(Other);
+	}
+
+}
+
+AParkourMesh* AParkourGameCharacter::GetNearestParkourObject()
+{
+	float MinDistSq = -1.0f;
+	AParkourMesh* NearestParkourObject = nullptr;
+	for (auto& PMesh : NearbyParkourObjects) {
+		float DistSq = (this->GetActorLocation() - PMesh->GetActorLocation()).SizeSquared();
+		if ((DistSq > MinDistSq) || (MinDistSq == 1.0f)) 
+		{
+			MinDistSq = DistSq;
+			NearestParkourObject = PMesh;
+		}
+
+	}
+	return NearestParkourObject;
+}
 
 void AParkourGameCharacter::PostInitializeComponents()
 {
@@ -103,6 +156,32 @@ void AParkourGameCharacter::MoveRight(float Value)
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
 	}
+}
+
+FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
+{
+	FVector HandPos;
+	AParkourMesh* ClosestParkourMesh;
+	if (handSide == EHandSideEnum::HS_Left) 
+	{
+		HandPos = GetMesh()->GetSocketLocation("Hand_lSocket");
+	}
+	else
+	{
+		HandPos = GetMesh()->GetSocketLocation("Hand_rSocket");
+	}
+	
+	ClosestParkourMesh = GetNearestParkourObject();
+
+	if (ClosestParkourMesh == nullptr) {
+		return HandPos;
+	}
+
+	FVector LineStart = ClosestParkourMesh->InteractiveZonePointer->ZoneCoord1 + ClosestParkourMesh->GetActorLocation();
+	FVector LineEnd = ClosestParkourMesh->InteractiveZonePointer->ZoneCoord2 + ClosestParkourMesh->GetActorLocation();
+
+	FBox box(LineEnd, LineStart);
+	return box.GetClosestPointTo(HandPos);
 }
 
 void AParkourGameCharacter::TurnAtRate(float Rate)
