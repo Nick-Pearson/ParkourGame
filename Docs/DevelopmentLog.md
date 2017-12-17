@@ -2,6 +2,26 @@
 
 Kept up to date with notes from latest meetings
 
+## 6. Meeting 15/12/17, 6pm MVB
+Our industrial mentor Craig came by to check where the project was currently at.
+
+Only Corin and David were present - end of term meant for deadlines and people travelling home.
+
+__Suggestion of an agile 'spike' was raise by Craig, wrt our physical animations:__
+A short timeboxed attempt to implement physical animations, without regard to the quality. We can then use this to assess the viablity of the technology, and if accepted use this to guide our final implementation. The work done on the spike would then be thrown away to allow for a release quality implementation.
+
+__Assigning creative responsibility:__
+Craig suggested the team should ideally have a single person in charge of the creative direction, handling art, style and other aestehtic choices.
+
+__Art style:__
+Minimal style would be preferable, due to lack of creative expertise and a lower time requirement. Maybe focus on color first. Other games with similar technology have a minimalistic style so look for inspiration there.
+
+__Timeline:__
+Aim to have a functional product at the end of feburary/march, that way the rest of the time can be used to polish and focus on making a complete product.
+
+__Next meeting:__
+Get back to Craig with a time and date for our next meeting.
+
 ## 5. Meeting 05/12/17, 4pm MVB
 
 Meeting with Tilo at 2pm on thursday with demo build to show to him and a 4th year student
