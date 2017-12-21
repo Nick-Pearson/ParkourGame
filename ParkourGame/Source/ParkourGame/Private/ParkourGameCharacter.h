@@ -7,7 +7,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Math/UnrealMath.h"
 #include "ParkourMesh.h"
-#include "ParkourTypes.h"
+#include "Utils/ParkourTypes.h"
 #include "ParkourGameCharacter.generated.h"
 
 

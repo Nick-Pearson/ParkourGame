@@ -2,7 +2,7 @@
 
 #include "ParkourGame.h"
 
-#include "GameVersion.h"
+#include "Utils/GameVersion.h"
 
 #include "Modules/ModuleManager.h"
 #include "NetworkVersion.h"
