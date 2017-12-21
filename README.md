@@ -25,7 +25,7 @@ IDE Workflow runs the whole editor out of an IDE
 
 Can run the editor without IDE, may be useful for smaller changes or on low powered machines
 
-2. Launch Unreal Engine (4.17.2) from the Epic Games Launcher
+2. Launch Unreal Engine (4.18) from the Epic Games Launcher
 
 3. In the project selector browse to the /ParkourGame/ folder and select ParkourGame.uproject
 

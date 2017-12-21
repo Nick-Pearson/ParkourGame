@@ -13,6 +13,9 @@ class AParkourGameGameMode : public AGameModeBase
 
 public:
 	AParkourGameGameMode();
+
+	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
+
 };
 
 
