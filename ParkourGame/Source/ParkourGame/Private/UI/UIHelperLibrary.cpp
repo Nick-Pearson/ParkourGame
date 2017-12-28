@@ -15,7 +15,7 @@ FText UUIHelperLibrary::FormatToasterMessage(const FText& FormatString, const TA
 	return FText::Format(FTextFormat(FormatString), args);
 }
 
-void UUIHelperLibrary::GetServerList(FDNSResultReturnEvent event){
+void UUIHelperLibrary::GetServerList(FServerListReturnEvent event){
     TSharedRef<IHttpRequest> HttpReq = FHttpModule::Get().CreateRequest();
     
     HttpReq->SetVerb("GET");
@@ -26,10 +26,10 @@ void UUIHelperLibrary::GetServerList(FDNSResultReturnEvent event){
     HttpReq->ProcessRequest();
 }
 
-void UUIHelperLibrary::ProcessResponse(FHttpRequestPtr ReqPtr, FHttpResponsePtr Response, bool Success, FDNSResultReturnEvent event){
+void UUIHelperLibrary::ProcessResponse(FHttpRequestPtr ReqPtr, FHttpResponsePtr Response, bool Success, FServerListReturnEvent event){
     if (!Success){
         return;
     }
-    TArray<FString> servers = {Response->GetContentAsString()};
-    event.Execute(servers);
+    FString serverList = Response->GetContentAsString();
+    event.Execute(serverList);
 }
