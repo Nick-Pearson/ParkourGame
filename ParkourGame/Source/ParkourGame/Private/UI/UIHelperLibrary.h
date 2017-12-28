@@ -6,7 +6,7 @@
 #include "UIHelperLibrary.generated.h"
 
 
-DECLARE_DYNAMIC_DELEGATE_OneParam( FDNSResultReturnEvent, const TArray<FString>&, IPAddresses );
+DECLARE_DYNAMIC_DELEGATE_OneParam( FServerListReturnEvent, const FString&, serverList );
 
 
 UCLASS()
@@ -18,6 +18,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD|Toaster")
 	static FText FormatToasterMessage(const FText& FormatString, const TArray<FText>& Parameters);
     UFUNCTION(BlueprintCallable, Category = "HUD|Toaster")
-    static void GetServerList(FDNSResultReturnEvent event);
-    static void ProcessResponse(FHttpRequestPtr ReqPtr, FHttpResponsePtr Response, bool Success, FDNSResultReturnEvent event);
+    static void GetServerList(FServerListReturnEvent event);
+    static void ProcessResponse(FHttpRequestPtr ReqPtr, FHttpResponsePtr Response, bool Success, FServerListReturnEvent event);
 };

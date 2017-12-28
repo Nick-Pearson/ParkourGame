@@ -13,6 +13,13 @@
 			]
 		}
 	],
+	"Plugins": [
+		{
+			"Name": "LowEntryJson",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/c108b5a8917c4c86873edf835237beab"
+		}
+	],
 	"TargetPlatforms": [
 		"LinuxNoEditor",
 		"MacNoEditor",
