@@ -112,6 +112,8 @@ protected:
 
 	void RagdollLegs();
 
+	void StandUp();
+
 	void CapsuleToRagdoll();
 
 	/**
