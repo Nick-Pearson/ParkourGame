@@ -1,10 +1,11 @@
-// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
-
 #include "ParkourGameCharacter.h"
 
 #include "Private/Physics/ConstraintManager.h"
 #include "Private/Utils/ParkourHelperLibrary.h"
 #include "Private/ParkourInteractiveZone.h"
+#include "Utils/SingletonHelper.h"
+#include "MiniGame/MiniGameManager.h"
+#include "Utils/ParkourFNames.h"
 #include "ParkourMesh.h"
 
 // Engine
@@ -55,6 +56,8 @@ AParkourGameCharacter::AParkourGameCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 	ConstraintManager = CreateDefaultSubobject<UConstraintManager>(TEXT("ConstraintManager"));
+
+	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
 
 void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
@@ -261,6 +264,9 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
 	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
 	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
+
+	//bindings for minigames
+	PlayerInputComponent->BindAction(FParkourFNames::Input_JoinGame, IE_Pressed, this, &AParkourGameCharacter::JoinMinigame);
 }
 
 bool AParkourGameCharacter::SetRagdollOnBodyPart_Validate(EBodyPart Part, bool bNewRagdoll) { return true; }
@@ -309,4 +315,13 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
 		Capsule->SetWorldLocation(SocketLocation);
 	}
+}
+
+bool AParkourGameCharacter::Server_JoinMinigame_Validate() { return true; }
+void AParkourGameCharacter::Server_JoinMinigame_Implementation()
+{
+	AMiniGameManager* Mgr = SingletonHelper->GetSingletonObject<AMiniGameManager>(GetWorld());
+	if (!Mgr) return;
+
+	Mgr->AddPlayerToGame(this);
 }

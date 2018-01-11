@@ -50,9 +50,11 @@ public:
 	virtual void BeginPlay();
 	virtual void EndPlay(EEndPlayReason::Type Reason);
 
+	TSharedPtr<class FSingletonHelper> SingletonHelper;
+
 	/*Include Handside enum for hand targeting calculations*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Enum)
-		EHandSideEnum HandSideEnum;
+	EHandSideEnum HandSideEnum;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<AParkourMesh*> NearbyParkourObjects;
@@ -114,6 +116,8 @@ protected:
 
 	void CapsuleToRagdoll();
 
+	void JoinMinigame() { Server_JoinMinigame(); }
+
 	/**
 	* Returns position to direct a given hand with IK
 	* @param handSide	Used to determine whether the function is calculating for the left or right hand
@@ -146,6 +150,9 @@ public:
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetFullRagdoll(bool bIsFullRagdoll);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_JoinMinigame();
 
 private:
 

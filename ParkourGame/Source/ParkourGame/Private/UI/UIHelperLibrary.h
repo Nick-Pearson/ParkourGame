@@ -14,4 +14,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD|Toaster")
 	static FText FormatToasterMessage(const FText& FormatString, const TArray<FText>& Parameters);
 	
+	// returns a string with the key combination for a particular input action
+	UFUNCTION(BlueprintCallable, Category = "HUD|Keys", meta = (WorldContext = "WorldContextObject"))
+	static FText GetDisplayStringForAction(UObject* WorldContextObject, const FName& ActionName);
+
 };

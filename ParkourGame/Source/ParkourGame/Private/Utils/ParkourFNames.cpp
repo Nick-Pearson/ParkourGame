@@ -24,3 +24,5 @@ const FName FParkourFNames::Bone_Spine_02("spine_02");
 const FName FParkourFNames::Bone_Spine_03("spine_03");
 
 const FName FParkourFNames::Bone_Pelvis("pelvis");
+
+const FName FParkourFNames::Input_JoinGame("JoinGame");
