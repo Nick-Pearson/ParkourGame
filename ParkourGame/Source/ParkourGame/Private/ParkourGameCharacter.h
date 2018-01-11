@@ -114,6 +114,8 @@ protected:
 
 	void RagdollLegs();
 
+	void StandUp();
+
 	void CapsuleToRagdoll();
 
 	void JoinMinigame() { Server_JoinMinigame(); }

@@ -235,6 +235,11 @@ void AParkourGameCharacter::RagdollLegs()
 	SetRagdollOnBodyPart(EBodyPart::LeftLeg, true);
 }
 
+void AParkourGameCharacter::StandUp()
+{
+	SetFullRagdoll(false);
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -264,6 +269,7 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
 	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
 	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
+	PlayerInputComponent->BindAction("StandUp", IE_Pressed, this, &AParkourGameCharacter::StandUp);
 
 	//bindings for minigames
 	PlayerInputComponent->BindAction(FParkourFNames::Input_JoinGame, IE_Pressed, this, &AParkourGameCharacter::JoinMinigame);
@@ -291,11 +297,15 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
 		PlayerMesh->SetSimulatePhysics(true);
+		PlayerMesh->SetAllBodiesBelowPhysicsBlendWeight(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), 1.0, false, true);
 		return;
 	}
 	else
 	{
-		PlayerMesh->SetSimulatePhysics(false);
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
+		PlayerMesh->AttachTo(Capsule, "None", EAttachLocation::SnapToTarget, true);
+		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -97.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
 	}
 
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
@@ -313,7 +323,7 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
 		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		Capsule->SetWorldLocation(SocketLocation);
+		Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, 97.0));
 	}
 }
 
