@@ -22,6 +22,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class USkeletalMeshComponent;
 class UConstraintManager;
+class UPhysicalAnimationComponent;
 
 UCLASS(config=Game)
 class AParkourGameCharacter : public ACharacter
@@ -29,11 +30,11 @@ class AParkourGameCharacter : public ACharacter
 	GENERATED_BODY()
 
 	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
 
 	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
 	/* Skel mesh */
@@ -41,8 +42,11 @@ class AParkourGameCharacter : public ACharacter
 	USkeletalMeshComponent* SkeletalMesh;
 
 	/* Constraint Manager */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
 	UConstraintManager* ConstraintManager;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
+	UPhysicalAnimationComponent* PhysicalAnimation;
 
 public:
 	AParkourGameCharacter();
@@ -66,11 +70,11 @@ public:
 public:
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera")
 	float BaseTurnRate;
 
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera")
 	float BaseLookUpRate;
 
 	UFUNCTION()
@@ -134,7 +138,6 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	AParkourMesh* GetNearestParkourObject();
 
-protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
@@ -147,16 +150,20 @@ public:
 
 	FORCEINLINE USkeletalMeshComponent* GetSkeletalMesh() const { return SkeletalMesh; }
 
+	FORCEINLINE UPhysicalAnimationComponent* GetPhysicalAnimation() const { return PhysicalAnimation; }
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
 
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(BlueprintCallable, Category = "Physics", Server, Reliable, WithValidation)
 	void SetFullRagdoll(bool bIsFullRagdoll);
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
 
 private:
+
+	void EnablePhysicalAnimation(bool Enable = true);
 
 	// Function called when the client recieves an update to the ragdoll state
 	UFUNCTION()
@@ -166,5 +173,7 @@ private:
 	// array of bools indicating if that body part is in ragdoll, has extra value at the end for full body ragdoll
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_RagdollState)
 	uint32 m_RagdollState[(int32)EBodyPart::MAX + 1];
+
+	bool bWasFalling = false;
 };
 

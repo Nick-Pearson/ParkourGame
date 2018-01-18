@@ -17,6 +17,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "UnrealNetwork.h"
+#include "PhysicsEngine/PhysicalAnimationComponent.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -57,6 +58,8 @@ AParkourGameCharacter::AParkourGameCharacter()
 
 	ConstraintManager = CreateDefaultSubobject<UConstraintManager>(TEXT("ConstraintManager"));
 
+	PhysicalAnimation = CreateDefaultSubobject<UPhysicalAnimationComponent>(TEXT("PhysicalAnimation"));
+
 	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
 
@@ -74,6 +77,9 @@ void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherA
 void AParkourGameCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	EnablePhysicalAnimation();
+
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
 }
@@ -237,6 +243,8 @@ void AParkourGameCharacter::RagdollLegs()
 
 void AParkourGameCharacter::StandUp()
 {
+	if (!GetCharacterMovement()->IsMovingOnGround()) return;
+
 	SetFullRagdoll(false);
 }
 
@@ -263,13 +271,15 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 
 	// Ragdoll controls
 	PlayerInputComponent->BindAction("RagdollBody", IE_Pressed, this, &AParkourGameCharacter::RagdollBody);
-	PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
-	PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
-	PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
-	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
-	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
-	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
 	PlayerInputComponent->BindAction("StandUp", IE_Pressed, this, &AParkourGameCharacter::StandUp);
+
+	// TEMP DISABLED -- for physical animation
+	//PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
+	//PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
+	//PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
+	//PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
+	//PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
+	//PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
 
 	//bindings for minigames
 	PlayerInputComponent->BindAction(FParkourFNames::Input_JoinGame, IE_Pressed, this, &AParkourGameCharacter::JoinMinigame);
@@ -290,14 +300,29 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 	OnRep_RagdollState();
 }
 
+void AParkourGameCharacter::EnablePhysicalAnimation(bool Enable /*= true*/)
+{
+	if (Enable)
+	{
+		PhysicalAnimation->SetSkeletalMeshComponent(GetSkeletalMesh());
+		PhysicalAnimation->ApplyPhysicalAnimationProfileBelow(FParkourFNames::Bone_Pelvis, FParkourFNames::Profile_Fall, false);
+	}
+	else
+	{
+		PhysicalAnimation->SetSkeletalMeshComponent(nullptr);
+	}
+
+	GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(FParkourFNames::Bone_Spine_01, Enable, true);
+}
+
 void AParkourGameCharacter::OnRep_RagdollState()
 {
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
+		EnablePhysicalAnimation(false);
 		PlayerMesh->SetSimulatePhysics(true);
-		PlayerMesh->SetAllBodiesBelowPhysicsBlendWeight(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), 1.0, false, true);
 		return;
 	}
 	else
@@ -306,8 +331,10 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
 		PlayerMesh->AttachTo(Capsule, "None", EAttachLocation::SnapToTarget, true);
 		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -97.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
+		EnablePhysicalAnimation();
 	}
-
+	/*
+	Temp Disabled
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
 	{
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(
@@ -315,6 +342,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 			m_RagdollState[i] > 0,
 				true);
 	}
+	*/
 }
 
 void AParkourGameCharacter::CapsuleToRagdoll()
