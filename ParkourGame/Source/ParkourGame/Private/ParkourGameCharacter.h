@@ -11,18 +11,43 @@
 #include "ParkourGameCharacter.generated.h"
 
 
-UENUM(BlueprintType)
-enum class EHandSideEnum : uint8
-{ //enum for which hand is being used for calculations
-	HS_Right	UMETA(DisplayName = "Right"),
-	HS_Left		UMETA(DisplayName = "Left")
-};
-
 class USpringArmComponent;
 class UCameraComponent;
 class USkeletalMeshComponent;
 class UConstraintManager;
 class UPhysicalAnimationComponent;
+class USimpleSpringSystem;
+class USpringSystem;
+class UParkourMovementComponent;
+class USphereComponent;
+
+
+UENUM(BlueprintType)
+enum class EHandSideEnum : uint8
+{ //enum for which hand is being used for calculations
+	HS_Right	UMETA(DisplayName = "Right"),
+	HS_Left		UMETA(DisplayName = "Left"),
+
+	MAX			UMETA(Hidden)
+};
+
+
+USTRUCT(BlueprintType)
+struct FGripData
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly, Category = "GripData")
+	bool isGripping;
+
+	UPROPERTY(BlueprintReadOnly, Category = "GripData")
+	FVector gripTarget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "GripData")
+	USpringSystem* ArmSpring;
+};
 
 UCLASS(config=Game)
 class AParkourGameCharacter : public ACharacter
@@ -47,25 +72,28 @@ class AParkourGameCharacter : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
 	UPhysicalAnimationComponent* PhysicalAnimation;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
+	USimpleSpringSystem* LegSpring;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
+	UParkourMovementComponent* MovementComp;
+
+	UPROPERTY(VisibleAnywhere, Category = "ObjectDetection")
+	USphereComponent* ObjectDetectionSphere;
 
 public:
-	AParkourGameCharacter();
+	AParkourGameCharacter(const FObjectInitializer& ObjectInitializer);
   
-	virtual void BeginPlay();
-	virtual void EndPlay(EEndPlayReason::Type Reason);
+	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
+	virtual void EndPlay(EEndPlayReason::Type Reason) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	TSharedPtr<class FSingletonHelper> SingletonHelper;
 
-	/*Include Handside enum for hand targeting calculations*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Enum)
-	EHandSideEnum HandSideEnum;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<AParkourMesh*> NearbyParkourObjects;
-  
-	virtual void PostInitializeComponents() override;
-	
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 
@@ -82,9 +110,24 @@ public:
 	UFUNCTION()
 	void EndOverlap(AActor* OverlappedActor, AActor* OtherActor);
 
+	// the physics subsystems will be ticked as if the game is running at this framerate
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	int32 PhysicsSubstepTargetFramerate = 120;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	float BodyMass = 75.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
+	float ObjectDetectionRadius = 200.0f;
+
 protected:
 
 	virtual void Tick(float DeltaSeconds);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Physics", meta = (DisplayName = "Subtick Physics"))
+	void BPE_SubtickPhysics(float DeltaSeconds);
+
+	void SubtickPhysics(float DeltaSeconds);
 
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
@@ -120,6 +163,9 @@ protected:
 
 	void RagdollLegs();
 
+	void BeginGrip(EHandSideEnum Hand);
+	void EndGrip(EHandSideEnum Hand);
+
 	void StandUp();
 
 	void CapsuleToRagdoll();
@@ -154,6 +200,8 @@ public:
 
 	FORCEINLINE UPhysicalAnimationComponent* GetPhysicalAnimation() const { return PhysicalAnimation; }
 
+	FORCEINLINE UParkourMovementComponent* GetParkourMovementComp() const { return MovementComp; }
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
 
@@ -163,7 +211,17 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
 
+	UFUNCTION(BlueprintPure, Category = "Input")
+	void GetGripData(EHandSideEnum Hand, FGripData& Data) const;
+
 private:
+
+	// returns true if the location is within a 90 radius in front of the player
+	bool IsWithinFieldOfView(const FVector& Location) const;
+
+	// indicates the seconds until the next physics sub tick
+	float m_PhysicsClock = 0.0f;
+	FVector SubphysicsVelocity = FVector::ZeroVector;
 
 	void EnablePhysicalAnimation(bool Enable = true);
 
@@ -176,6 +234,7 @@ private:
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_RagdollState)
 	uint32 m_RagdollState[(int32)EBodyPart::MAX + 1];
 
-	bool bWasFalling = false;
+	UPROPERTY(Transient)
+	FGripData m_GripData[(int32)EHandSideEnum::MAX];
 };
 
