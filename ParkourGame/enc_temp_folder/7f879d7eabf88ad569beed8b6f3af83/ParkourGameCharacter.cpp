@@ -319,7 +319,7 @@ void AParkourGameCharacter::EnablePhysicalAnimation(bool Enable /*= true*/)
 		PhysicalAnimation->SetSkeletalMeshComponent(nullptr);
 	}
 
-	//GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(FParkourFNames::Bone_Spine_01, Enable, true);
+	GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(FParkourFNames::Bone_Spine_01, Enable, true);
 } 
 
 void AParkourGameCharacter::OnRep_RagdollState()
