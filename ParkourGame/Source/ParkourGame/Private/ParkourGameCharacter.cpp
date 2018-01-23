@@ -1,26 +1,33 @@
-// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
-
 #include "ParkourGameCharacter.h"
 
-#include "Private/Physics/ConstraintManager.h"
-#include "Private/Utils/ParkourHelperLibrary.h"
-#include "Private/ParkourInteractiveZone.h"
 #include "ParkourMesh.h"
+#include "ParkourInteractiveZone.h"
+#include "MiniGame/MiniGameManager.h"
+#include "Utils/ParkourFNames.h"
+#include "Utils/SingletonHelper.h"
+#include "Utils/ParkourHelperLibrary.h"
+#include "Core/ParkourMovementComponent.h"
+#include "Physics/ConstraintManager.h"
+#include "Physics/SimpleSpringSystem.h"
+#include "Physics/SpringSystem.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "UnrealNetwork.h"
+#include "PhysicsEngine/PhysicalAnimationComponent.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
 
-AParkourGameCharacter::AParkourGameCharacter()
+AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectInitializer) :
+	Super(ObjectInitializer.SetDefaultSubobjectClass<UParkourMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -55,6 +62,14 @@ AParkourGameCharacter::AParkourGameCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 	ConstraintManager = CreateDefaultSubobject<UConstraintManager>(TEXT("ConstraintManager"));
+	PhysicalAnimation = CreateDefaultSubobject<UPhysicalAnimationComponent>(TEXT("PhysicalAnimation"));
+
+	// Object detection sphere
+	ObjectDetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ObjectDetectionSphere"));
+	ObjectDetectionSphere->SetSphereRadius(ObjectDetectionRadius);
+	ObjectDetectionSphere->SetupAttachment(RootComponent);
+
+	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
 
 void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
@@ -71,6 +86,9 @@ void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherA
 void AParkourGameCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	EnablePhysicalAnimation();
+
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
 }
@@ -98,6 +116,8 @@ AParkourMesh* AParkourGameCharacter::GetNearestParkourObject()
 	float MinDistSq = -1.0f;
 	AParkourMesh* NearestParkourObject = nullptr;
 	for (auto& PMesh : NearbyParkourObjects) {
+		if(!IsWithinFieldOfView(PMesh->GetActorLocation())) continue;
+
 		float DistSq = (this->GetActorLocation() - PMesh->GetActorLocation()).SizeSquared();
 		if ((DistSq > MinDistSq) || (MinDistSq == 1.0f)) 
 		{
@@ -113,7 +133,17 @@ void AParkourGameCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
+	MovementComp = Cast<UParkourMovementComponent>(GetCharacterMovement());
 	SkeletalMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+
+	LegSpring = NewObject<USimpleSpringSystem>(this);
+
+	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
+	{
+		m_GripData[i].ArmSpring = NewObject<USpringSystem>(this);
+		m_GripData[i].ArmSpring->SpringConstant = 5000.0f;
+		m_GripData[i].ArmSpring->SpringDampening = 100.0f;
+	}
 }
 
 void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -127,35 +157,77 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	CapsuleToRagdoll();
+
+	// tick the physics as often as is specified
+	m_PhysicsClock += DeltaSeconds;
+	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
+
+	while (m_PhysicsClock > PhysicsSubtickDeltaSeconds)
+	{
+		SubtickPhysics(PhysicsSubtickDeltaSeconds);
+		m_PhysicsClock -= PhysicsSubtickDeltaSeconds;
+	}
+
+	//gripping code
+	// due to the movement component only ticking at normal times we must only apply force everyt ime
+	FVector TotalForce = FVector::ZeroVector;
+
+	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
+	{
+		if (!m_GripData[i].ArmSpring || !m_GripData[i].isGripping) continue;
+
+		m_GripData[i].ArmSpring->Point2 = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
+		m_GripData[i].ArmSpring->Tick(DeltaSeconds);
+		TotalForce += m_GripData[i].ArmSpring->GetSpringForce();
+	}
+
+	GetParkourMovementComp()->AddForce(TotalForce);
+}
+
+void AParkourGameCharacter::SubtickPhysics(float DeltaSeconds)
+{
+	BPE_SubtickPhysics(DeltaSeconds);
+
+	// leg spring physics
+	if(LegSpring)
+		LegSpring->Tick(DeltaSeconds);
 }
 
 void AParkourGameCharacter::MoveForward(float Value)
 {
-	if ((Controller != NULL) && (Value != 0.0f))
-	{
-		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+	if (!Controller || Value == 0.0f || m_RagdollState[(int32)EBodyPart::MAX] > 0)
+		return;
 
-		// get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Value);
-	}
+	// find out which way is forward
+	const FRotator Rotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
+  
+	// get forward vector
+	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	AddMovementInput(Direction, Value);
 }
 
 void AParkourGameCharacter::MoveRight(float Value)
 {
-	if ( (Controller != NULL) && (Value != 0.0f) )
-	{
-		// find out which way is right
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+	if (!Controller || Value == 0.0f || m_RagdollState[(int32)EBodyPart::MAX] > 0)
+		return;
 	
-		// get right vector 
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		// add movement in that direction
-		AddMovementInput(Direction, Value);
-	}
+	// find out which way is right
+	const FRotator Rotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
+	
+	// get right vector 
+	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	// add movement in that direction
+	AddMovementInput(Direction, Value);
+}
+
+void AParkourGameCharacter::Jump()
+{
+	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
+		return;
+
+	Super::Jump();
 }
 
 FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
@@ -232,14 +304,50 @@ void AParkourGameCharacter::RagdollLegs()
 	SetRagdollOnBodyPart(EBodyPart::LeftLeg, true);
 }
 
+void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX ||
+		!GetNearestParkourObject())
+		return;
+	
+	FGripData& Data = m_GripData[(int32)Hand];
+
+	Data.gripTarget = GetParkourHandTarget(Hand);
+	Data.isGripping = true;
+	Data.ArmSpring->Initialise(Data.gripTarget, Data.gripTarget);
+}
+
+void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX) return;
+
+	m_GripData[(int32)Hand].isGripping = false;
+}
+
+void AParkourGameCharacter::StandUp()
+{
+	if (!GetCharacterMovement()->IsMovingOnGround()) return;
+
+	SetFullRagdoll(false);
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
 void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
-	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+
+	// helper macro that allows us to pass payload arguments through to input functions
+#define BIND_ACTION_CUSTOMEVENT(ActionName, KeyEvent, Func, ...) \
+	{ \
+		FInputActionBinding AB(ActionName, KeyEvent); \
+		AB.ActionDelegate = FInputActionUnifiedDelegate(FInputActionHandlerSignature::CreateUObject(this, Func, ##__VA_ARGS__)); \
+		PlayerInputComponent->AddActionBinding(AB); \
+	}
+
+	// Set up gameplay key bindings
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AParkourGameCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AParkourGameCharacter::MoveForward);
@@ -255,12 +363,26 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 
 	// Ragdoll controls
 	PlayerInputComponent->BindAction("RagdollBody", IE_Pressed, this, &AParkourGameCharacter::RagdollBody);
+	PlayerInputComponent->BindAction("StandUp", IE_Pressed, this, &AParkourGameCharacter::StandUp);
+
+	// TEMP DISABLED -- for physical animation
 	PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
 	PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
 	PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
 	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
 	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
 	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
+
+	//bindings for minigames
+	PlayerInputComponent->BindAction(FParkourFNames::Input_JoinGame, IE_Pressed, this, &AParkourGameCharacter::JoinMinigame);
+
+	// grip controls
+	BIND_ACTION_CUSTOMEVENT("GripL", IE_Pressed, &AParkourGameCharacter::BeginGrip, EHandSideEnum::HS_Left);
+	BIND_ACTION_CUSTOMEVENT("GripL", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Left);
+	BIND_ACTION_CUSTOMEVENT("GripR", IE_Pressed, &AParkourGameCharacter::BeginGrip, EHandSideEnum::HS_Right);
+	BIND_ACTION_CUSTOMEVENT("GripR", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Right);
+
+#undef BIND_ACTION_CUSTOMEVENT
 }
 
 bool AParkourGameCharacter::SetRagdollOnBodyPart_Validate(EBodyPart Part, bool bNewRagdoll) { return true; }
@@ -278,20 +400,55 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 	OnRep_RagdollState();
 }
 
+void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) const
+{
+	if (Hand == EHandSideEnum::MAX) return;
+	Data = m_GripData[(int32)Hand];
+}
+
+bool AParkourGameCharacter::IsWithinFieldOfView(const FVector& Location) const
+{
+	FVector Dir = Location - GetActorLocation();
+	Dir.Normalize();
+
+	const float Angle = FMath::Acos(FVector::DotProduct(Dir, GetActorForwardVector()));
+	return FMath::Abs(Angle) < 1.57f;
+}
+
+void AParkourGameCharacter::EnablePhysicalAnimation(bool Enable /*= true*/)
+{
+	if (Enable)
+	{
+		PhysicalAnimation->SetSkeletalMeshComponent(GetSkeletalMesh());
+		PhysicalAnimation->ApplyPhysicalAnimationProfileBelow(FParkourFNames::Bone_Pelvis, FParkourFNames::Profile_Fall, false);
+	}
+	else
+	{
+		PhysicalAnimation->SetSkeletalMeshComponent(nullptr);
+	}
+  
+	//GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(FParkourFNames::Bone_Spine_01, Enable, true);
+} 
+
 void AParkourGameCharacter::OnRep_RagdollState()
 {
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
+		EnablePhysicalAnimation(false);
 		PlayerMesh->SetSimulatePhysics(true);
 		return;
 	}
 	else
 	{
-		PlayerMesh->SetSimulatePhysics(false);
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
+		PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
+		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -97.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
+		EnablePhysicalAnimation();
 	}
-
+	
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
 	{
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(
@@ -303,10 +460,19 @@ void AParkourGameCharacter::OnRep_RagdollState()
 
 void AParkourGameCharacter::CapsuleToRagdoll()
 {
-	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	/*USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
 		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		Capsule->SetWorldLocation(SocketLocation);
-	}
+		Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, 97.0));
+	}*/
+}
+
+bool AParkourGameCharacter::Server_JoinMinigame_Validate() { return true; }
+void AParkourGameCharacter::Server_JoinMinigame_Implementation()
+{
+	AMiniGameManager* Mgr = SingletonHelper->GetSingletonObject<AMiniGameManager>(GetWorld());
+	if (!Mgr) return;
+
+	Mgr->AddPlayerToGame(this);
 }
