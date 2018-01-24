@@ -42,4 +42,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SpringSystem")
 	FVector GetSpringForce() const;
 
+	FORCEINLINE FVector GetPoint1Location() const { return Point1; }
+
 };

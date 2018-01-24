@@ -48,7 +48,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "GripData")
 	FVector gripTarget;
 
-	UPROPERTY(BlueprintReadOnly, Category = "GripData")
+	UPROPERTY(BlueprintReadOnly, Category = "GripData", NotReplicated)
 	USpringSystem* ArmSpring;
 };
 
@@ -65,7 +65,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "PushData")
 	FVector pushTarget;
 
-	UPROPERTY(BlueprintReadOnly, Category = "PushData")
+	UPROPERTY(BlueprintReadOnly, Category = "PushData", NotReplicated)
 	UPushSpringSystem* ArmSpring;
 };
 
@@ -186,6 +186,12 @@ protected:
 	void BeginGrip(EHandSideEnum Hand);
 	void EndGrip(EHandSideEnum Hand);
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_BeginGrip(EHandSideEnum Hand);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_EndGrip(EHandSideEnum Hand);
+
 	void BeginPush(EHandSideEnum Hand);
 	void EndPush(EHandSideEnum Hand);
 
@@ -258,7 +264,10 @@ private:
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_RagdollState)
 	uint32 m_RagdollState[(int32)EBodyPart::MAX + 1];
 
-	UPROPERTY(Transient)
+	UFUNCTION()
+	void OnRep_GripData();
+
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_GripData)
 	FGripData m_GripData[(int32)EHandSideEnum::MAX];
 
 	UPROPERTY(Transient)

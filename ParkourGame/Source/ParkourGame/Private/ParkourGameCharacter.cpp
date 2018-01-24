@@ -155,6 +155,7 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
+	DOREPLIFETIME(AParkourGameCharacter, m_GripData);
 }
 
 void AParkourGameCharacter::Tick(float DeltaSeconds)
@@ -318,6 +319,22 @@ void AParkourGameCharacter::RagdollLegs()
 	SetRagdollOnBodyPart(EBodyPart::LeftLeg, true);
 }
 
+void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX)
+		return;
+
+	Server_BeginGrip(Hand);
+}
+
+void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX)
+		return;
+
+	Server_EndGrip(Hand);
+}
+
 void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX)
@@ -351,7 +368,9 @@ void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
 	m_PushData[(int32)Hand].isPushing = false;
 }
 
-void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
+bool AParkourGameCharacter::Server_BeginGrip_Validate(EHandSideEnum Hand) { return true; }
+
+void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX ||
 		!GetNearestParkourObject())
@@ -361,10 +380,12 @@ void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
 
 	Data.gripTarget = GetParkourHandTarget(Hand);
 	Data.isGripping = true;
-	Data.ArmSpring->Initialise(Data.gripTarget, Data.gripTarget);
+	OnRep_GripData();
 }
 
-void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
+bool AParkourGameCharacter::Server_EndGrip_Validate(EHandSideEnum Hand) { return true; }
+
+void AParkourGameCharacter::Server_EndGrip_Implementation(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX) return;
 
@@ -504,6 +525,22 @@ void AParkourGameCharacter::OnRep_RagdollState()
 			UParkourHelperLibrary::GetRootBoneForBodyPart((EBodyPart)i),
 			m_RagdollState[i] > 0,
 				true);
+	}
+}
+
+void AParkourGameCharacter::OnRep_GripData()
+{
+	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
+	{
+		if (m_GripData[i].isGripping)
+		{
+			if (m_GripData[i].ArmSpring->GetPoint1Location() != m_GripData[i].gripTarget)
+				m_GripData[i].ArmSpring->Initialise(m_GripData[i].gripTarget, m_GripData[i].gripTarget);
+		}
+		else
+		{
+			m_GripData[i].ArmSpring->Initialise(FVector::ZeroVector, FVector::ZeroVector);
+		}
 	}
 }
 
