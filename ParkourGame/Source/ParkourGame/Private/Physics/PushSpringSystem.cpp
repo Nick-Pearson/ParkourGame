@@ -1,6 +1,41 @@
 #include "PushSpringSystem.h"
 #include "DrawDebugHelpers.h"
 
+bool Trace(
+	UWorld* World,
+	AActor* ActorToIgnore,
+	const FVector& Start,
+	const FVector& End,
+	FHitResult& HitOut,
+	ECollisionChannel CollisionChannel = ECC_Pawn,
+	bool ReturnPhysMat = false
+) {
+	if (!World)
+	{
+		return false;
+	}
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
+
+	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
+
+	FCollisionQueryParams TraceParams(FName(TEXT("Push Trace")), true, ActorToIgnore);
+
+	//Re-initialize hit info
+	HitOut = FHitResult(ForceInit);
+
+	//Trace!
+	World->LineTraceSingleByObjectType(
+		HitOut,		//result
+		Start,	//start
+		End, //end
+		FCollisionObjectQueryParams(TraceObjectTypes)
+	);
+
+	//Hit any Actor?
+	return (HitOut.GetActor() != NULL);
+}
+
 void UPushSpringSystem::CalculatePoint2()
 {
 
@@ -20,23 +55,23 @@ void UPushSpringSystem::Initialise(const FVector& start, const FVector& end, AAc
 	Point3 = start;
 	SpringForce = FVector::ZeroVector;
 
-	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
-
-	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
-
-	FCollisionQueryParams Params(FName(TEXT("Push Trace")), true, ActorToIgnore);
-
 	FHitResult HitData(ForceInit);
-
-	GetWorld()->LineTraceSingleByObjectType(
-		HitData,		//result
-		start,	//start
-		end, //end
-		FCollisionObjectQueryParams(TraceObjectTypes)
-	);
-
-	if (HitData.GetActor())
-		Point2 = HitData.ImpactPoint;
+	if (Trace(GetWorld(), ActorToIgnore, Point3, end, HitData))
+	{
+		if (HitData.GetActor())
+		{
+			DrawDebugPoint(
+				GetWorld(),
+				HitData.ImpactPoint,
+				10,  					//size
+				FColor(255, 0, 255),  //pink
+				true,  				//persistent (never goes away)
+				4.0 					//point leaves a trail on moving object
+			);
+			UE_LOG(LogTemp, Warning, TEXT("Your distance is %s"), *FString::SanitizeFloat(HitData.Distance));
+		}
+		Point1 = HitData.ImpactPoint;
+	}
 
 	CalculatePoint2();
 	DrawDebugPoint(
