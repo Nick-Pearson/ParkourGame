@@ -30,9 +30,6 @@ AParkourGameGameMode::AParkourGameGameMode()
 FString AParkourGameGameMode::InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal /*= TEXT("")*/)
 {
 	FString msg = Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
-
-	ChangeName(NewPlayerController, "Dave", false);
-
 	return msg;
 }
 
