@@ -336,8 +336,8 @@ void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
 	const FVector End = Start + Rot * 1024;
 
 	Data.isPushing = true;
-	Data.pushTarget = End;
 	Data.ArmSpring->Initialise(Start, End, GetParkourPlayerController()->GetPawn());
+	Data.pushTarget = Data.ArmSpring->Point1;
 }
 
 void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
@@ -430,6 +430,8 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("GripR", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("PushR", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("PushR", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Right);
+	BIND_ACTION_CUSTOMEVENT("PushL", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Left);
+	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
@@ -453,6 +455,12 @@ void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) con
 {
 	if (Hand == EHandSideEnum::MAX) return;
 	Data = m_GripData[(int32)Hand];
+}
+
+void AParkourGameCharacter::GetPushData(EHandSideEnum Hand, FPushData& Data) const
+{
+	if (Hand == EHandSideEnum::MAX) return;
+	Data = m_PushData[(int32)Hand];
 }
 
 bool AParkourGameCharacter::IsWithinFieldOfView(const FVector& Location) const

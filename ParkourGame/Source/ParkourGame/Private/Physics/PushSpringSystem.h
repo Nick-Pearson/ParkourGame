@@ -26,10 +26,13 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PushSpringSystem", meta = (AllowPrivateAccess = "true"))
 	FVector Point2;
-private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PushSpringSystem", meta = (AllowPrivateAccess = "true"))
 	FVector Point1;
+
+private:
+
+	
 
 	UFUNCTION(BlueprintCallable, Category = "PushSpringSystem")
 	void CalculatePoint2();

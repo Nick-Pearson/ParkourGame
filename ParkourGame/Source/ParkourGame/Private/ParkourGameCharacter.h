@@ -237,6 +237,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Input")
 	void GetGripData(EHandSideEnum Hand, FGripData& Data) const;
 
+	UFUNCTION(BlueprintPure, Category = "Input")
+	void GetPushData(EHandSideEnum Hand, FPushData& Data) const;
+
 private:
 	AParkourPlayerController* GetParkourPlayerController();
 
