@@ -33,7 +33,8 @@ void AMiniGameManager::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	OnGameOver.AddDynamic(this, &AMiniGameManager::OnGameEnded);
+	if(!HasAuthority())
+		OnGameOver.AddDynamic(this, &AMiniGameManager::OnGameEnded);
 
 	SetNextGameTimer();
 }
@@ -137,13 +138,15 @@ void AMiniGameManager::OnGameEnded(AMiniGameBase* Game, EMiniGameEndReason Reaso
 
 	APlayerController* LocalPlayerController = UGameplayStatics::GetPlayerController(this, 0);
 
+	if (!LocalPlayerController) return;
+
 	// only message players that are actually in the game
 	TArray<AParkourGameCharacter*> AllPlayers;
 	Game->GetAllPlayers(AllPlayers);
 
 	if (!AllPlayers.Contains(Cast<AParkourGameCharacter>(LocalPlayerController->GetCharacter()))) return;
 
-	AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(LocalPlayerController ? LocalPlayerController->GetHUD() : nullptr);
+	AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(LocalPlayerController->GetHUD());
 	UObject* Toaster = HUDptr ? HUDptr->GetToaster() : nullptr;
 
 	if (Toaster)
