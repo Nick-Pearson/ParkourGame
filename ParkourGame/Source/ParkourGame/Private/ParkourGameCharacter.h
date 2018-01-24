@@ -5,9 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Core/ParkourPlayerController.h"
 #include "Math/UnrealMath.h"
 #include "ParkourMesh.h"
 #include "Utils/ParkourTypes.h"
+#include "Physics/PushSpringSystem.h"
 #include "ParkourGameCharacter.generated.h"
 
 
@@ -20,6 +22,7 @@ class USimpleSpringSystem;
 class USpringSystem;
 class UParkourMovementComponent;
 class USphereComponent;
+
 
 
 UENUM(BlueprintType)
@@ -47,6 +50,23 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "GripData")
 	USpringSystem* ArmSpring;
+};
+
+USTRUCT(BlueprintType)
+struct FPushData
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly, Category = "PushData")
+	bool isPushing;
+
+	UPROPERTY(BlueprintReadOnly, Category = "PushData")
+	FVector pushTarget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "PushData")
+	UPushSpringSystem* ArmSpring;
 };
 
 UCLASS(config=Game)
@@ -166,6 +186,9 @@ protected:
 	void BeginGrip(EHandSideEnum Hand);
 	void EndGrip(EHandSideEnum Hand);
 
+	void BeginPush(EHandSideEnum Hand);
+	void EndPush(EHandSideEnum Hand);
+
 	void StandUp();
 
 	void CapsuleToRagdoll();
@@ -215,6 +238,7 @@ public:
 	void GetGripData(EHandSideEnum Hand, FGripData& Data) const;
 
 private:
+	AParkourPlayerController* GetParkourPlayerController();
 
 	// returns true if the location is within a 90 radius in front of the player
 	bool IsWithinFieldOfView(const FVector& Location) const;
@@ -236,5 +260,8 @@ private:
 
 	UPROPERTY(Transient)
 	FGripData m_GripData[(int32)EHandSideEnum::MAX];
+
+	UPROPERTY(Transient)
+	FPushData m_PushData[(int32)EHandSideEnum::MAX];
 };
 
