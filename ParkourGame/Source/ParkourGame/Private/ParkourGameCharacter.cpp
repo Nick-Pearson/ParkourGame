@@ -10,6 +10,7 @@
 #include "Physics/ConstraintManager.h"
 #include "Physics/SimpleSpringSystem.h"
 #include "Physics/SpringSystem.h"
+#include "Physics/PushSpringSystem.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
@@ -140,6 +141,9 @@ void AParkourGameCharacter::PostInitializeComponents()
 
 	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
 	{
+		m_PushData[i].ArmSpring = NewObject<UPushSpringSystem>(this);
+		m_PushData[i].ArmSpring->SpringConstant = 5000.0f;
+		m_PushData[i].ArmSpring->SpringDampening = 100.0f;
 		m_GripData[i].ArmSpring = NewObject<USpringSystem>(this);
 		m_GripData[i].ArmSpring->SpringConstant = 5000.0f;
 		m_GripData[i].ArmSpring->SpringDampening = 100.0f;
@@ -174,14 +178,24 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 
 	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
 	{
-		if (!m_GripData[i].ArmSpring || !m_GripData[i].isGripping) continue;
-
-		m_GripData[i].ArmSpring->Point2 = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
-		m_GripData[i].ArmSpring->Tick(DeltaSeconds);
-		TotalForce += m_GripData[i].ArmSpring->GetSpringForce();
+		if (m_GripData[i].ArmSpring && m_GripData[i].isGripping) {
+			m_GripData[i].ArmSpring->Point2 = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
+			m_GripData[i].ArmSpring->Tick(DeltaSeconds);
+			TotalForce += m_GripData[i].ArmSpring->GetSpringForce();
+		}
+		else if (m_PushData[i].ArmSpring && m_PushData[i].isPushing) {
+			m_PushData[i].ArmSpring->Point3 = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
+			m_PushData[i].ArmSpring->Tick(DeltaSeconds);
+		}
 	}
 
 	GetParkourMovementComp()->AddForce(TotalForce);
+}
+
+
+AParkourPlayerController* AParkourGameCharacter::GetParkourPlayerController()
+{
+	return Cast<AParkourPlayerController>(Controller);
 }
 
 void AParkourGameCharacter::SubtickPhysics(float DeltaSeconds)
@@ -304,6 +318,39 @@ void AParkourGameCharacter::RagdollLegs()
 	SetRagdollOnBodyPart(EBodyPart::LeftLeg, true);
 }
 
+void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX)
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Your message"));
+
+	FPushData& Data = m_PushData[(int32)Hand];
+
+	//location the PC is focused on
+	const FVector Start = GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
+
+	FVector Rot = GetControlRotation().Vector();
+	Rot.SetComponentForAxis(EAxis::Type::Z, 0.f);
+	//256 units in facing direction of PC (256 units in front of the camera)
+	const FVector End = Start + Rot * 1024;
+
+	Data.isPushing = true;
+	Data.pushTarget = End;
+	Data.ArmSpring->Initialise(Start, End, GetParkourPlayerController()->GetPawn());
+}
+
+void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX) return;
+
+	float force = m_PushData[(int32)Hand].ArmSpring->GetSpringForce();
+	LaunchCharacter(GetControlRotation().Vector() * force, false, false);
+	UE_LOG(LogTemp, Warning, TEXT("Your springforce is %s"), *FString::SanitizeFloat(force));
+	
+	m_PushData[(int32)Hand].isPushing = false;
+}
+
 void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX ||
@@ -381,6 +428,8 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("GripL", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Left);
 	BIND_ACTION_CUSTOMEVENT("GripR", IE_Pressed, &AParkourGameCharacter::BeginGrip, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("GripR", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Right);
+	BIND_ACTION_CUSTOMEVENT("PushR", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Right);
+	BIND_ACTION_CUSTOMEVENT("PushR", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Right);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
