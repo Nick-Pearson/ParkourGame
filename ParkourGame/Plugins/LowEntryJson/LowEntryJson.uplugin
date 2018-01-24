@@ -1,0 +1,28 @@
+{
+	"FileVersion": 3,
+	"Version": 12,
+	"VersionName": "4.18.0 r0",
+	"FriendlyName": "Low Entry - Json",
+	"Description": "The Json plugin provides you with blueprints to create and parse JSON strings.",
+	"Category": "Low Entry.Plugins",
+	"CreatedBy": "Low Entry",
+	"CreatedByURL": "https://lowentry.com",
+	"DocsURL": "",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/c108b5a8917c4c86873edf835237beab",
+	"SupportURL": "",
+	"EngineVersion": "4.18.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "LowEntryJson",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault"
+		},
+		{
+			"Name": "LowEntryJsonEditor",
+			"Type": "Developer",
+			"LoadingPhase": "Default"
+		}
+	]
+}

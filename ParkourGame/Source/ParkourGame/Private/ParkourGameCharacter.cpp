@@ -215,7 +215,7 @@ void AParkourGameCharacter::MoveForward(float Value)
 	// find out which way is forward
 	const FRotator Rotation = Controller->GetControlRotation();
 	const FRotator YawRotation(0, Rotation.Yaw, 0);
-
+  
 	// get forward vector
 	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 	AddMovementInput(Direction, Value);
@@ -475,7 +475,9 @@ void AParkourGameCharacter::EnablePhysicalAnimation(bool Enable /*= true*/)
 	{
 		PhysicalAnimation->SetSkeletalMeshComponent(nullptr);
 	}
-}
+  
+	//GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(FParkourFNames::Bone_Spine_01, Enable, true);
+} 
 
 void AParkourGameCharacter::OnRep_RagdollState()
 {
