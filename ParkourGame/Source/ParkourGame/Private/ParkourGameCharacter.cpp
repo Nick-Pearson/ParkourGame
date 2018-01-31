@@ -11,6 +11,7 @@
 #include "Physics/SimpleSpringSystem.h"
 #include "Physics/SpringSystem.h"
 #include "Physics/PushSpringSystem.h"
+#include "Audio/FootstepAudioTableRow.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
@@ -23,6 +24,9 @@
 #include "GameFramework/PlayerState.h"
 #include "UnrealNetwork.h"
 #include "PhysicsEngine/PhysicalAnimationComponent.h"
+#include "Engine/DataTable.h"
+#include "AudioDevice.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -70,6 +74,22 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
 	ObjectDetectionSphere->SetSphereRadius(ObjectDetectionRadius);
 	ObjectDetectionSphere->SetupAttachment(RootComponent);
 
+	const float FootSphereRadius = 25.0f;
+
+	FootSphereL = CreateDefaultSubobject<USphereComponent>(TEXT("FootSphereL"));
+	FootSphereL->SetSphereRadius(FootSphereRadius);
+
+	FootSphereR = CreateDefaultSubobject<USphereComponent>(TEXT("FootSphereR"));
+	FootSphereR->SetSphereRadius(FootSphereRadius);
+	
+	USkeletalMeshComponent* SkelMesh = Cast<USkeletalMeshComponent>(GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+
+	if (SkelMesh)
+	{
+		FootSphereL->SetupAttachment(SkelMesh, FParkourFNames::Bone_Foot_L);
+		FootSphereR->SetupAttachment(SkelMesh, FParkourFNames::Bone_Foot_R);
+	}
+
 	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
 
@@ -92,6 +112,9 @@ void AParkourGameCharacter::BeginPlay()
 
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
+
+	FootSphereL->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepL);
+	FootSphereR->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepR);
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
@@ -455,6 +478,69 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 #undef BIND_ACTION_CUSTOMEVENT
 }
 
+void AParkourGameCharacter::PlayFootstepL(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherComp != GetCharacterMovement()->GetMovementBase()) return;
+
+	int32 SoundType = 0;
+
+	if (OtherComp)
+	{
+		SoundType = (int32)OtherComp->BodyInstance.GetSimplePhysicalMaterial()->SurfaceType - 1;
+	}
+
+	PlayFootstepSound(SoundType, true);
+}
+
+void AParkourGameCharacter::PlayFootstepR(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherComp != GetCharacterMovement()->GetMovementBase()) return;
+
+	int32 SoundType = 0;
+
+	if (OtherComp)
+	{
+		SoundType = (int32)OtherComp->BodyInstance.GetSimplePhysicalMaterial()->SurfaceType - 1;
+	}
+
+	PlayFootstepSound(SoundType, false);
+}
+
+void AParkourGameCharacter::PlayFootstepSound(int32 SoundType, bool isLeft)
+{
+	UWorld* WorldPtr = GetWorld();
+
+	if (!WorldPtr || !FootstepAudioTable)
+		return;
+	
+	TArray<FName> RowNames = FootstepAudioTable->GetRowNames();
+
+	if (RowNames.Num() == 0) return;
+
+	if (!RowNames.IsValidIndex(SoundType))
+		SoundType = 0;
+
+	const FFootstepAudioTableRow* RowPtr = FootstepAudioTable->FindRow<FFootstepAudioTableRow>(RowNames[SoundType], "PlayFootstepSound", false);
+
+	if (!RowPtr) return;
+
+	// select a sound randomly
+	USoundWave* FoundSound = nullptr;
+
+	if (isLeft)
+		FoundSound = RowPtr->LeftFoot[FMath::RandHelper(RowPtr->LeftFoot.Num() - 1)];
+	else
+		FoundSound = RowPtr->RightFoot[FMath::RandHelper(RowPtr->LeftFoot.Num() - 1)];
+
+	if (!FoundSound) return;
+
+	if (FAudioDevice* AudioDevice = WorldPtr->GetAudioDevice())
+	{
+		FVector Location;
+		AudioDevice->PlaySoundAtLocation(FoundSound, WorldPtr, 1.0f, 1.0f, 0.0f, Location, FRotator::ZeroRotator, nullptr, nullptr, nullptr, this);
+	}
+}
+
 bool AParkourGameCharacter::SetRagdollOnBodyPart_Validate(EBodyPart Part, bool bNewRagdoll) { return true; }
 void AParkourGameCharacter::SetRagdollOnBodyPart_Implementation(EBodyPart Part, bool bNewRagdoll)
 {
@@ -515,7 +601,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
 		PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
-		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -97.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
+		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -90.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
 		EnablePhysicalAnimation();
 	}
 	

@@ -102,6 +102,12 @@ class AParkourGameCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, Category = "ObjectDetection")
 	USphereComponent* ObjectDetectionSphere;
 
+	UPROPERTY(VisibleAnywhere, Category = "Audio")
+	USphereComponent* FootSphereL;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Audio")
+	USphereComponent* FootSphereR;
+
 public:
 	AParkourGameCharacter(const FObjectInitializer& ObjectInitializer);
   
@@ -139,6 +145,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	class UDataTable* FootstepAudioTable;
 
 protected:
 
@@ -218,6 +227,14 @@ protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
+
+	UFUNCTION()
+	void PlayFootstepL(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void PlayFootstepR(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	void PlayFootstepSound(int32 SoundType, bool isLeft);
 
 public:
 	/** Returns CameraBoom subobject **/
