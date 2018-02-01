@@ -101,7 +101,7 @@ void AMiniGameManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 void AMiniGameManager::CheckUpOnGame()
 {
-	if (!ActiveGame || ActiveGame->GameState != EMiniGameSate::Pending) return;
+	if (!ActiveGame || ActiveGame->GameState != EMiniGameState::Pending) return;
 
 	if (ActiveGame->CanBeStarted())
 		ActiveGame->OnGameStart();
@@ -157,7 +157,7 @@ void AMiniGameManager::OnGameEnded(AMiniGameBase* Game, EMiniGameEndReason Reaso
 void AMiniGameManager::OnRep_ActiveGame()
 {
 	//show some UI if a new game is starting
-	if (ActiveGame && ActiveGame->GameState == EMiniGameSate::Pending)
+	if (ActiveGame && ActiveGame->GameState == EMiniGameState::Pending)
 	{
 		APlayerController* LocalPlayerController = UGameplayStatics::GetPlayerController(this, 0);
 		AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(LocalPlayerController ? LocalPlayerController->GetHUD() : nullptr);

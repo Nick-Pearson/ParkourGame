@@ -2,6 +2,76 @@
 
 Kept up to date with notes from latest meetings
 
+## 7. Meeting with Tilo and team meeting afterwards (10am MVB)
+
+### Tilo:
+
+Tilo gave a number of points to improve our game, we are meeting with him again next thursday to discuss our solutions. Solutions are inline with Tilo's points
+
+* We need to demonstrate a multiplayer gameplay prototype
+
+*We are adding a new milestone to our project planning scheduled for 2 weeks before the Easter demo to ensure we have a working multiplayer prototype*
+
+* We need to build more interaction between players
+
+*Jonas and David are both working on systems that will add this functionality and also allow for interesting gameplay*
+
+*Use players momentum as a factor when determining collisions*
+
+* We need methods to ensure players are aware of the game state and stay in roughly the same game area
+
+*Implementing an X-Ray vision system (similar to VATS in fallout) that will highlight key other players on the screen*
+
+* We need to think of a best case I/O system
+
+*Going to design an I/O system that could work and discuss the idea with Richard and Beth to see if it is feasible*
+
+*Going to add a telemetry system so we can track keypresses on the School Visit day and use that data to inform how players learn to play the game*
+
+* Additional work to know where we can excel as a team
+
+*Our main focus is building the best games day experience, this is going to rely on good spectator technologies for managing and tracking games*
+
+### Team Meeting:
+
+Discussed the points above
+Agreed that we should start work on the report as it is large
+
+__Corin:__
+* Modifying the Minigame Manager system and adding the racing game
+* Moving onto level design for CTF (planning on building a large symmetrical sandbox at first)
+
+__Jonas:__
+* Refactoring Grip and Push moves to be driven from the same input and be selected based on context
+* Going to try and extend this system to allow a Vault move and also ability to push off other players
+
+__Ben:__
+* Creating a number of simple 3D models
+* Discussed textures and agreed to leave the models textureless for now
+* Will work with Corin later next week on filling a test level with these objects
+
+__James:__
+* Finishing player names, making sure server/client interaction is correct and that names orient to the camera
+* Will work on the backend for the leaderboard system after this
+
+__Nick:__
+* Finished footstep audio
+* Working on post process effects for the XRay vision and TV screens
+
+__David:__
+* Working on the tackle move
+* Going to try and get a generic system so the player can roll out of situations where they would usually ragdoll
+
+### Weightings
+
+After the meeting we discussed the work levels from last term and generally agreed that the level of work put in is in roughly three levels (most to least)
+* Nick + James
+* Corin, Jonas + Ben
+* David
+
+Going to discuss exact numerical weightings at a later date
+
+
 ## 6. Meeting 15/12/17, 6pm MVB
 Our industrial mentor Craig came by to check where the project was currently at.
 

@@ -11,7 +11,7 @@
 class AMiniGameManager;
 
 UENUM(BlueprintType)
-enum class EMiniGameSate : uint8
+enum class EMiniGameState : uint8
 {
 	// Mini game is initialised and waiting for players to join
 	Pending,
@@ -111,6 +111,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "MiniGame")
 	int32 GetWinningTeam();
 
+	// Called when the game loaded, used to set game parameters
+	UFUNCTION(BlueprintImplementableEvent, Category = "MiniGame", meta = (DisplayName = "OnGameInit"))
+	void BPE_GameInit();
+
 	// Called when the game is kicked off and the countdown is about to begin
 	UFUNCTION(BlueprintImplementableEvent, Category = "MiniGame", meta = (DisplayName="OnGameStart"))
 	void BPE_GameStart();
@@ -120,6 +124,9 @@ public:
 	void BPE_GameEnd();
 
 protected:
+
+	// Called when game is being loaded
+	virtual void OnGameInit();
 
 	// Called when the game is kicked off
 	virtual void OnGameStart();
@@ -131,6 +138,9 @@ public:
 
 	// Are the minimum conditions met for a game to be started
 	virtual bool CanBeStarted() const;
+
+	UFUNCTION(BlueprintCallable, Category = "MiniGame")
+	void SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin);
 
 	UFUNCTION(BlueprintPure, Category = "MiniGame")
 	int32 GetNumPlayers() const;
@@ -179,11 +189,14 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "MiniGame")
 	FDateTime CountdownStartTime;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
+	bool FreeForAll = false; //to improve readability
+
 	UFUNCTION()
 	void OnRep_State();
 
 	UPROPERTY(BlueprintReadOnly, Category = "MiniGame", ReplicatedUsing = OnRep_State)
-	EMiniGameSate GameState = EMiniGameSate::Pending;
+	EMiniGameState GameState = EMiniGameState::Pending;
 
 	UPROPERTY(BlueprintReadOnly, Category = "MiniGame", Replicated)
 	EMiniGameEndReason GameEndReason = EMiniGameEndReason::MAX; // set as variable so it can be read by clients

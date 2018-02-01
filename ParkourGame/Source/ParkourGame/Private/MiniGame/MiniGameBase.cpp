@@ -70,8 +70,15 @@ void AMiniGameBase::InitialiseGame(AMiniGameManager* Manager)
 		return;
 	}
 
+	
+
 	GameManager = Manager;
-	GameState = EMiniGameSate::Pending;
+	GameState = EMiniGameState::Pending;
+
+	OnGameInit();
+
+	if (NumPlayersPerTeam == 1)
+		FreeForAll = true;
 
 	TeamData.Empty(NumTeams);
 
@@ -79,6 +86,7 @@ void AMiniGameBase::InitialiseGame(AMiniGameManager* Manager)
 	{
 		FMiniGameTeam NewTeam;
 		NewTeam.TeamID = i;
+		NewTeam.Score = 0;
 		TeamData.Add(NewTeam);
 	}
 }
@@ -89,9 +97,14 @@ void AMiniGameBase::OnGameStart()
 	CountdownStartTime = FDateTime::Now() + FTimespan(0, 0, 2);
 	CountdownStartTime_Replicated = CountdownStartTime.GetTicks();
 
-	GameState = EMiniGameSate::InProgress;
+	GameState = EMiniGameState::InProgress;
 
 	BPE_GameStart();
+}
+
+void AMiniGameBase::OnGameInit()
+{
+	BPE_GameInit();
 }
 
 void AMiniGameBase::RequestEndGame(EMiniGameEndReason Reason)
@@ -137,15 +150,17 @@ int32 AMiniGameBase::GetWinningTeam_Implementation()
 bool AMiniGameBase::CanBeStarted() const
 {
 	// only condition currently is that every team has at least one player
-	for (const FMiniGameTeam& Team : TeamData)
-		if (Team.PlayersInTeam.Num() == 0) return false;
-
+	for (const FMiniGameTeam& Team : TeamData) {
+		if (Team.PlayersInTeam.Num() == 0 && !FreeForAll) {
+			UE_LOG(ParkourGame, Warning, TEXT("[MinigameBase] team does not have enough players, players in team = %d"), Team.PlayersInTeam.Num()); return false;;
+		}
+	}
 	return true;
 }
 
 void AMiniGameBase::OnGameEnd(EMiniGameEndReason Reason)
 {
-	GameState = EMiniGameSate::Complete;
+	GameState = EMiniGameState::Complete;
 	GameEndReason = Reason;
 
 	FTimerHandle DestroyHandle;
@@ -244,10 +259,10 @@ void AMiniGameBase::OnRep_State()
 
 	switch (GameState)
 	{
-	case EMiniGameSate::InProgress:
+	case EMiniGameState::InProgress:
 		GameManager->OnGameStarted.Broadcast(this);
 		break;
-	case EMiniGameSate::Complete:
+	case EMiniGameState::Complete:
 		GameManager->OnGameOver.Broadcast(this, GameEndReason);
 		break;
 	}
@@ -300,4 +315,13 @@ void AMiniGameBase::OnRep_TeamData()
 void AMiniGameBase::OnRep_CountdownTime()
 {
 	CountdownStartTime = FDateTime(CountdownStartTime_Replicated);
+}
+
+void AMiniGameBase::SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin)
+{
+	DisplayName = Name;
+	GameDescription = Description;
+	NumTeams = NTeams;
+	NumPlayersPerTeam = PlayersPerTeam;
+	ScoreToWin = PointsToWin;
 }
