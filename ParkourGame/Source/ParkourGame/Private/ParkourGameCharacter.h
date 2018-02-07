@@ -263,6 +263,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Rendering")
 	void SetVisibleInXRay(bool ShouldBeVisible);
 
+	UFUNCTION(BlueprintPure, Category = "Input")
+	void GetPushData(EHandSideEnum Hand, FPushData& Data) const;
+
 private:
 	AParkourPlayerController* GetParkourPlayerController();
 
