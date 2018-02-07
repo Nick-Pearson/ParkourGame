@@ -115,6 +115,8 @@ void AParkourGameCharacter::BeginPlay()
 
 	FootSphereL->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepL);
 	FootSphereR->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepR);
+
+	SetVisibleInXRay(true);
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
@@ -417,7 +419,7 @@ void AParkourGameCharacter::Server_EndGrip_Implementation(EHandSideEnum Hand)
 
 void AParkourGameCharacter::StandUp()
 {
-	if (!GetCharacterMovement()->IsMovingOnGround()) return;
+	if (GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
 
 	SetFullRagdoll(false);
 }
@@ -562,6 +564,14 @@ void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) con
 	Data = m_GripData[(int32)Hand];
 }
 
+void AParkourGameCharacter::SetVisibleInXRay(bool ShouldBeVisible)
+{
+	if (Role == ENetRole::ROLE_AutonomousProxy) return;
+
+	GetSkeletalMesh()->SetRenderCustomDepth(ShouldBeVisible);
+	GetSkeletalMesh()->SetCustomDepthStencilValue(ShouldBeVisible ? 255 : 0);
+}
+
 bool AParkourGameCharacter::IsWithinFieldOfView(const FVector& Location) const
 {
 	FVector Dir = Location - GetActorLocation();
@@ -582,8 +592,6 @@ void AParkourGameCharacter::EnablePhysicalAnimation(bool Enable /*= true*/)
 	{
 		PhysicalAnimation->SetSkeletalMeshComponent(nullptr);
 	}
-  
-	//GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(FParkourFNames::Bone_Spine_01, Enable, true);
 } 
 
 void AParkourGameCharacter::OnRep_RagdollState()
@@ -593,6 +601,8 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
 		EnablePhysicalAnimation(false);
+		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		PlayerMesh->SetSimulatePhysics(true);
 		return;
 	}
@@ -602,6 +612,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
 		PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
 		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -90.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		EnablePhysicalAnimation();
 	}
 	
@@ -632,12 +643,12 @@ void AParkourGameCharacter::OnRep_GripData()
 
 void AParkourGameCharacter::CapsuleToRagdoll()
 {
-	/*USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
 		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
 		Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, 97.0));
-	}*/
+	}
 }
 
 bool AParkourGameCharacter::Server_JoinMinigame_Validate() { return true; }

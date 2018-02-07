@@ -260,6 +260,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Input")
 	void GetGripData(EHandSideEnum Hand, FGripData& Data) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Rendering")
+	void SetVisibleInXRay(bool ShouldBeVisible);
+
 private:
 	AParkourPlayerController* GetParkourPlayerController();
 

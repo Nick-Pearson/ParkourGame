@@ -1,0 +1,2 @@
+This folder contains copies of any custom shader code used within Unreal
+It is intended to keep track of this code in source control and doesn't directly link to the game itself. Ensure any changes made here are copied to the relevant nodes in ue4 itself

@@ -2,7 +2,7 @@
 
 Kept up to date with notes from latest meetings
 
-## 7. Meeting with Tilo and team meeting afterwards (10am MVB)
+## 7. Meeting with Tilo and team meeting afterwards 01/02/18 (10am MVB)
 
 ### Tilo:
 
