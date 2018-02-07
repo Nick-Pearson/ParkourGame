@@ -610,6 +610,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	{
 		EnablePhysicalAnimation(false);
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
+		GetParkourMovementComp()->SetMovementMode(MOVE_None);
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		PlayerMesh->SetSimulatePhysics(true);
 		return;
@@ -620,10 +621,10 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
 		PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
 		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -90.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
+		GetParkourMovementComp()->SetMovementMode(MOVE_Walking);
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		EnablePhysicalAnimation();
 	}
-	
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
 	{
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(
