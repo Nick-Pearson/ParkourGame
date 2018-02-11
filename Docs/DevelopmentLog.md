@@ -2,6 +2,31 @@
 
 Kept up to date with notes from latest meetings
 
+## 8. Meeting with Tilo and team meeting afterwards 08/02/18 (10am MVB)
+
+Tilo went over our results from last time, he seemed ok with most ideas apart from the XRay vision system for keeping players informed and our choice to stick to keyboard and mouse
+
+__Nick:__
+* Working on creating the live scoreboard
+* Implementing the leaderboard API in unreal (working with James)
+
+__Jonas:__
+* Still working on combining grab / push and making them independant of Parkour Objects
+
+__Corin:__
+* Working on handling different gamemodes
+
+__David:__
+* Working on the 'roll to recover' system
+* Is also going to look an issue with velocity in tackle
+
+__Ben:__
+* Completed a set of 3d models to use
+
+__Backlog Tasks:__
+* The 'stand up' system needs a lot of work including animation
+* The slide move needs to be reviewed and gotten to a better state
+
 ## 7. Meeting with Tilo and team meeting afterwards 01/02/18 (10am MVB)
 
 ### Tilo:
