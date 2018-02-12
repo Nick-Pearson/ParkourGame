@@ -48,8 +48,8 @@ void ULeaderboardFunctionLibrary::PostLeaderboardEntries(FPostLeaderboardSignatu
 	for (const FLeaderboardEntry& Entry : Entries)
 	{
 		ULowEntryJsonArray* EntryArray = ULowEntryJsonArray::Create();
-		ULowEntryJsonArray::AddString(ScoresArray, Entry.PlayerName);
-		ULowEntryJsonArray::AddInteger(ScoresArray, Entry.Score);
+		ULowEntryJsonArray::AddString(EntryArray, Entry.PlayerName);
+		ULowEntryJsonArray::AddInteger(EntryArray, Entry.Score);
 
 		ULowEntryJsonArray::AddJsonArray(ScoresArray, EntryArray);
 	}
