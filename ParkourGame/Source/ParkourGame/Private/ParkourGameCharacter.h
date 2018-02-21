@@ -102,6 +102,9 @@ class AParkourGameCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, Category = "ObjectDetection")
 	USphereComponent* ObjectDetectionSphere;
 
+	UPROPERTY(EditAnywhere, Category = "ObjectDetection")
+	class UTextRenderComponent* PlayerNameTag;
+
 	UPROPERTY(VisibleAnywhere, Category = "Audio")
 	USphereComponent* FootSphereL;
 	
@@ -236,6 +239,11 @@ protected:
 
 	void PlayFootstepSound(int32 SoundType, bool isLeft);
 
+	virtual void OnRep_PlayerState() override;
+
+	UFUNCTION()
+	void OnPlayerNameChanged();
+
 public:
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -247,6 +255,8 @@ public:
 	FORCEINLINE UPhysicalAnimationComponent* GetPhysicalAnimation() const { return PhysicalAnimation; }
 
 	FORCEINLINE UParkourMovementComponent* GetParkourMovementComp() const { return MovementComp; }
+
+	FORCEINLINE UTextRenderComponent* GetPlayerNameTag() const { return PlayerNameTag; }
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
@@ -295,5 +305,9 @@ private:
 
 	UPROPERTY(Transient)
 	FPushData m_PushData[(int32)EHandSideEnum::MAX];
+
+
+	UPROPERTY(Transient)
+	class AParkourPlayerState* ParkourPlayerState;
 };
 
