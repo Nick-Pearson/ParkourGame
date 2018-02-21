@@ -64,6 +64,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "MinigameManager", meta = (RowType ="MiniGameTeamUIInfo"))
 	class UDataTable* TeamUIInfoTable;
 
+	// Whether the map uses minigames or a single game mode for the map
+	UPROPERTY(EditAnywhere, Category = "MiniGameManager")
+	bool SingleGame = false;
+
 	// If the game is not full by the end of this timeout it is either destroyed or automatically started
 	UPROPERTY(EditAnywhere, Category = "MiniGameManager")
 	float GameStartTimeout = 30;

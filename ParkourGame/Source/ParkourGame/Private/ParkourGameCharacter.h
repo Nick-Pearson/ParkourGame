@@ -208,6 +208,8 @@ protected:
 
 	void CapsuleToRagdoll();
 
+
+	UFUNCTION(BlueprintCallable, Category = "Minigame")
 	void JoinMinigame() { Server_JoinMinigame(); }
 
 	/**

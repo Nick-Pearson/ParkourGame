@@ -140,7 +140,7 @@ public:
 	virtual bool CanBeStarted() const;
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
-	void SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin);
+	void SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin, bool JoinAutomatically, int32 GameLengthMax);
 
 	UFUNCTION(BlueprintPure, Category = "MiniGame")
 	int32 GetNumPlayers() const;
@@ -185,6 +185,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
 	int32 ScoreToWin = 5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
+	int32 GameMaxLength = 300;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
+	bool AutoJoin = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "MiniGame")
 	FDateTime CountdownStartTime;

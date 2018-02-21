@@ -317,11 +317,13 @@ void AMiniGameBase::OnRep_CountdownTime()
 	CountdownStartTime = FDateTime(CountdownStartTime_Replicated);
 }
 
-void AMiniGameBase::SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin)
+void AMiniGameBase::SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin, bool JoinAutomatically, int32 GameLengthMax)
 {
 	DisplayName = Name;
 	GameDescription = Description;
 	NumTeams = NTeams;
 	NumPlayersPerTeam = PlayersPerTeam;
 	ScoreToWin = PointsToWin;
+	AutoJoin = JoinAutomatically;
+	GameMaxLength = GameLengthMax;
 }
