@@ -10,12 +10,14 @@
 #include "Physics/ConstraintManager.h"
 #include "Physics/SimpleSpringSystem.h"
 #include "Physics/SpringSystem.h"
+#include "Networking/ParkourPlayerState.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -69,6 +71,9 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
 	ObjectDetectionSphere->SetSphereRadius(ObjectDetectionRadius);
 	ObjectDetectionSphere->SetupAttachment(RootComponent);
 
+	PlayerNameTag = CreateDefaultSubobject<UTextRenderComponent>(TEXT("PlayerName"));
+	PlayerNameTag->SetupAttachment(RootComponent);
+
 	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
 
@@ -91,6 +96,16 @@ void AParkourGameCharacter::BeginPlay()
 
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
+
+	if (PlayerNameTag)
+	{
+		PlayerNameTag->SetText(FText::FromString("Player Name"));
+
+		if (Role == ENetRole::ROLE_AutonomousProxy)
+		{
+			PlayerNameTag->SetHiddenInGame(true);
+		}
+	}
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
@@ -153,6 +168,31 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 }
 
+void AParkourGameCharacter::OnRep_PlayerState()
+{
+	if (PlayerState && PlayerState != ParkourPlayerState)
+	{
+		if (ParkourPlayerState)
+		{
+			ParkourPlayerState->OnPlayerNameChanged.RemoveDynamic(this, &AParkourGameCharacter::OnPlayerNameChanged);
+		}
+
+		ParkourPlayerState = Cast<AParkourPlayerState>(PlayerState);
+
+		if (ParkourPlayerState)
+		{
+			ParkourPlayerState->OnPlayerNameChanged.AddDynamic(this, &AParkourGameCharacter::OnPlayerNameChanged);
+			OnPlayerNameChanged();
+		}
+	}
+}
+
+void AParkourGameCharacter::OnPlayerNameChanged()
+{
+	if (PlayerNameTag)
+		PlayerNameTag->SetText(FText::FromString(ParkourPlayerState->PlayerName));
+}
+
 void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -182,6 +222,9 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	}
 
 	GetParkourMovementComp()->AddForce(TotalForce);
+
+	if (PlayerNameTag)
+		PlayerNameTag->SetWorldRotation(FQuat::Identity);
 }
 
 void AParkourGameCharacter::SubtickPhysics(float DeltaSeconds)

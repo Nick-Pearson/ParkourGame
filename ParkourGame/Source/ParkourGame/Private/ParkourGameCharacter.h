@@ -82,6 +82,9 @@ class AParkourGameCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, Category = "ObjectDetection")
 	USphereComponent* ObjectDetectionSphere;
 
+	UPROPERTY(EditAnywhere, Category = "ObjectDetection")
+	class UTextRenderComponent* PlayerNameTag;
+
 public:
 	AParkourGameCharacter(const FObjectInitializer& ObjectInitializer);
   
@@ -190,6 +193,11 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
+	virtual void OnRep_PlayerState() override;
+
+	UFUNCTION()
+	void OnPlayerNameChanged();
+
 public:
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -201,6 +209,8 @@ public:
 	FORCEINLINE UPhysicalAnimationComponent* GetPhysicalAnimation() const { return PhysicalAnimation; }
 
 	FORCEINLINE UParkourMovementComponent* GetParkourMovementComp() const { return MovementComp; }
+
+	FORCEINLINE UTextRenderComponent* GetPlayerNameTag() const { return PlayerNameTag; }
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
@@ -236,5 +246,9 @@ private:
 
 	UPROPERTY(Transient)
 	FGripData m_GripData[(int32)EHandSideEnum::MAX];
+
+
+	UPROPERTY(Transient)
+	class AParkourPlayerState* ParkourPlayerState;
 };
 

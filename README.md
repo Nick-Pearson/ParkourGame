@@ -17,13 +17,13 @@ a known issue where you will need a credential manager to sync properly (git cre
 
 IDE Workflow runs the whole editor out of an IDE
 
-2. Navigate to /ParkourGame/, and right click on ParkourGame.uproject. You should see an option to "Generate project files" for Visual Studio or XCode(?)
+2. Navigate to /ParkourGame/, and right click on ParkourGame.uproject. You should see an option to "Generate project files" for Visual Studio or XCode
 
 3. Open the solution file generated and build, once a build is sucessful the Unreal Editor will appear
 
 ### Editor Workflow
 
-Can run the editor without IDE, may be useful for smaller changes or on low powered machines
+You can run the editor without IDE, may be useful for smaller changes or on low powered machines
 
 2. Launch Unreal Engine (4.18) from the Epic Games Launcher
 
