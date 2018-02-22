@@ -264,8 +264,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Physics", Server, Reliable, WithValidation)
 	void SetFullRagdoll(bool bIsFullRagdoll);
 
+	UFUNCTION(BlueprintPure, Category = "Physics")
+	bool IsFullRagdoll() const;
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
+
+	// EDITOR ONLY
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_BecomeSpectator();
 
 	UFUNCTION(BlueprintPure, Category = "Input")
 	void GetGripData(EHandSideEnum Hand, FGripData& Data) const;

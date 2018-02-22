@@ -13,6 +13,7 @@
 #include "Networking/ParkourPlayerState.h"
 #include "Physics/PushSpringSystem.h"
 #include "Audio/FootstepAudioTableRow.h"
+#include "Spectator/ParkourSpectator.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
@@ -603,6 +604,48 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 	OnRep_RagdollState();
 }
 
+bool AParkourGameCharacter::IsFullRagdoll() const
+{
+	return m_RagdollState[(int32)EBodyPart::MAX] > 0;
+}
+
+// Should only be used in editor - switching to a spectator mid game could break minigames in a bad way
+#if WITH_EDITOR
+
+static void cmd_BecomeSpectator(UWorld* World)
+{
+	APlayerController* PlayerCtlr = World->GetFirstPlayerController();
+	AParkourGameCharacter* PlayerCharacter = PlayerCtlr ? Cast<AParkourGameCharacter>(PlayerCtlr->GetPawn()) : nullptr;
+
+	if (!IsValid(PlayerCharacter))
+		return;
+
+	PlayerCharacter->Server_BecomeSpectator();
+}
+
+FAutoConsoleCommandWithWorld BecomeSpectatorCmd(
+	TEXT("Parkour.Spectate"),
+	TEXT("Changes the player into a spectator"),
+	FConsoleCommandWithWorldDelegate::CreateStatic(cmd_BecomeSpectator));
+
+#endif
+
+
+bool AParkourGameCharacter::Server_BecomeSpectator_Validate()
+{
+	return true;
+}
+
+void AParkourGameCharacter::Server_BecomeSpectator_Implementation()
+{
+#if WITH_EDITOR
+	AParkourSpectator* SpecatorPawn = GetWorld()->SpawnActor<AParkourSpectator>(AParkourSpectator::StaticClass(), GetTransform());
+
+	GetController()->Possess(SpecatorPawn);
+	Destroy();
+#endif
+}
+
 void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) const
 {
 	if (Hand == EHandSideEnum::MAX) return;
@@ -652,7 +695,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
 		EnablePhysicalAnimation(false);
-		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
+		PlayerMesh->ResetAllBodiesSimulatePhysics();
 		GetParkourMovementComp()->SetMovementMode(MOVE_None);
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		PlayerMesh->SetSimulatePhysics(true);

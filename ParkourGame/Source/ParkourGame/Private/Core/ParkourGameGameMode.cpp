@@ -7,6 +7,7 @@
 #include "ParkourPlayerController.h"
 #include "../UI/ParkourGameHUD.h"
 #include "../Networking/ParkourPlayerState.h"
+#include "../Spectator/ParkourSpectator.h"
 
 AParkourGameGameMode::AParkourGameGameMode()
 {
@@ -25,6 +26,7 @@ AParkourGameGameMode::AParkourGameGameMode()
 
 	PlayerControllerClass = AParkourPlayerController::StaticClass();
 	PlayerStateClass = AParkourPlayerState::StaticClass();
+	SpectatorClass = AParkourSpectator::StaticClass();
 }
 
 FString AParkourGameGameMode::InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal /*= TEXT("")*/)
