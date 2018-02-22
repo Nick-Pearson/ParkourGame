@@ -117,6 +117,13 @@ void AParkourGameCharacter::BeginPlay()
 	FootSphereR->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepR);
 
 	SetVisibleInXRay(true);
+
+	//If there is an 'autojoin' game in progress, join it
+
+	AMiniGameManager* Mgr = SingletonHelper->GetSingletonObject<AMiniGameManager>(GetWorld());
+	if (Mgr) {
+		if(Mgr->GetActiveGame()->AutoJoin) Mgr->AddPlayerToGame(this);
+	}
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
