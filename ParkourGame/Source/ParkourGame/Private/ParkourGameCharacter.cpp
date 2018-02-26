@@ -122,7 +122,10 @@ void AParkourGameCharacter::BeginPlay()
 
 	AMiniGameManager* Mgr = SingletonHelper->GetSingletonObject<AMiniGameManager>(GetWorld());
 	if (Mgr) {
-		if(Mgr->GetActiveGame()->AutoJoin) Mgr->AddPlayerToGame(this);
+		AMiniGameBase* ActiveGame = Mgr->GetActiveGame();
+		if (ActiveGame) {
+			if (ActiveGame->AutoJoin) Mgr->AddPlayerToGame(this);
+		}
 	}
 }
 

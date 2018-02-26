@@ -31,6 +31,9 @@ public:
 	void CreateGame(TSubclassOf<AMiniGameBase>& GameClass);
 
 	bool AddPlayerToGame(AParkourGameCharacter* Player);
+
+	UFUNCTION(BlueprintCallable, Category = "MinigameManager")
+	void RemovePlayerFromGame(AParkourGameCharacter* Player);
 	
 	UFUNCTION(BlueprintCallable, Category = "MinigameManager")
 	void GetUIDataForTeam(int32 index, FMiniGameTeamUIInfo& outInfo) const;

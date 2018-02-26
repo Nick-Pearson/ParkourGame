@@ -62,6 +62,29 @@ bool AMiniGameBase::PlayerJoinGame(AParkourGameCharacter* Player)
 	return true;
 }
 
+void AMiniGameBase::PlayerLeaveGame(AParkourGameCharacter* Player)
+{
+	if (!Player || !HasAuthority()) return;
+
+	// ensure the player is already in the game
+	TArray<AParkourGameCharacter*> AllPlayers;
+	GetAllPlayers(AllPlayers);
+
+	if (!AllPlayers.Contains(Player)) return;
+
+	int32 TeamID = GetTeamFromPlayer(Player);
+	FMiniGameTeam Team = GetTeamFromID(TeamID);
+	Team.PlayersInTeam.Remove(Player);
+
+	//check if Team is empty
+	if (Team.PlayersInTeam.Num() == 0)
+	{
+		//END GAME todo
+	}
+
+	return;
+}
+
 void AMiniGameBase::InitialiseGame(AMiniGameManager* Manager)
 {
 	if (!ensure(Manager))
@@ -227,6 +250,21 @@ int32 AMiniGameBase::GetTeamFromPlayer(AParkourGameCharacter* Player) const
 	return 0;
 }
 
+FMiniGameTeam AMiniGameBase::GetTeamFromID(int32 TeamID) const
+{
+	for (const FMiniGameTeam& Team : TeamData)
+	{
+			if (TeamID == Team.TeamID) return Team;
+	}
+
+	UE_LOG(ParkourGame, Warning, TEXT("[MinigameBase] Attempted to get the team from an invalid ID"));
+
+	FMiniGameTeam ErrTeam;
+	ErrTeam.TeamID = -1;
+
+	return ErrTeam;
+}
+
 void AMiniGameBase::ModifyScore(int32 TeamID, int32 Change, int32& NewScore)
 {
 	FMiniGameTeam* TeamPtr = TeamData.FindByPredicate([&](const FMiniGameTeam& queryTeam) {
@@ -279,7 +317,19 @@ void AMiniGameBase::OnRep_TeamData()
 			return queryTeam.TeamID == Team.TeamID;
 		});
 
-		if(!oldTeam) continue;
+		if (!oldTeam)
+		{
+			// no existing team data so all players are new players
+			GameManager->OnTeamScoreUpdated.Broadcast(this, Team.TeamID);
+
+			for (const TWeakObjectPtr<AParkourGameCharacter>& player : Team.PlayersInTeam)
+			{
+				// player only in new array - they have joined the game
+				GameManager->OnPlayerJoinedTeam.Broadcast(this, player.Get(), Team.TeamID);
+			}
+
+			continue;
+		}
 
 		//compare values are fire the appropriate events
 		if (oldTeam->Score != Team.Score) GameManager->OnTeamScoreUpdated.Broadcast(this, Team.TeamID);

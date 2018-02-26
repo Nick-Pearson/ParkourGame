@@ -80,6 +80,12 @@ bool AMiniGameManager::AddPlayerToGame(AParkourGameCharacter* Player)
 	return ActiveGame->PlayerJoinGame(Player);
 }
 
+void AMiniGameManager::RemovePlayerFromGame(AParkourGameCharacter* Player)
+{
+	ActiveGame->PlayerLeaveGame(Player);
+	return;
+}
+
 void AMiniGameManager::GetUIDataForTeam(int32 index, FMiniGameTeamUIInfo& outInfo) const
 {
 	if (!TeamUIInfoTable) return;

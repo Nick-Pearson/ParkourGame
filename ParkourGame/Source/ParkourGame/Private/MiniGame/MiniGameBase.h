@@ -92,6 +92,9 @@ public:
 	// Called when a player requests to join this game, returns true if the player was able to join
 	virtual bool PlayerJoinGame(AParkourGameCharacter* Player);
 
+	// Called when a player leaves the game
+	virtual void PlayerLeaveGame(AParkourGameCharacter* Player);
+
 	// Called when the game object is spawned by the manager
 	virtual void InitialiseGame(AMiniGameManager* Manager);
 
@@ -158,10 +161,15 @@ public:
 	int32 GetTeamFromPlayer(AParkourGameCharacter* Player) const;
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
+	FMiniGameTeam GetTeamFromID(int32 TeamID) const;
+
+	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	void ModifyScore(int32 TeamID, int32 Change, int32& NewScore);
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	int32 GetScore(int32 TeamID) const;
+
+
 
 public:
 
