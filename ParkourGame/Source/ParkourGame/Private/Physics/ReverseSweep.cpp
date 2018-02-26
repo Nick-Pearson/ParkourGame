@@ -323,7 +323,7 @@ FVector GeomReverseSweep(const UWorld* World, const struct FCollisionShape& Coll
 	const PxGeometry& PGeom = ShapeAdaptor.GetGeometry();
 	const PxQuat& PGeomRot = ShapeAdaptor.GetGeomOrientation();
 
-	POut = P2UVector(GeomReverseSweep_PhysX(World, PGeom, PGeomRot, End, Start, TraceChannel, Params, ResponseParams, ObjectParams));
+	POut = P2UVector(GeomReverseSweep_PhysX(World, PGeom, PGeomRot, Start, End, TraceChannel, Params, ResponseParams, ObjectParams));
 
 	return POut;
 }
@@ -333,7 +333,7 @@ PxVec3 GeomReverseSweep_PhysX(const UWorld* World, const PxGeometry& PGeom, cons
 	// Create filter data used to filter collisions
 	PxFilterData PFilter = CreateQueryFilterData(TraceChannel, Params.bTraceComplex, ResponseParams.CollisionResponse, Params, ObjectParams, true);
 	PxQueryFilterData PQueryFilterData(PFilter, StaticDynamicQueryFlags(Params) | PxQueryFlag::ePREFILTER | PxQueryFlag::ePOSTFILTER | PxQueryFlag::eNO_BLOCK);
-	PxHitFlags POutputFlags = PxHitFlag::ePOSITION | PxHitFlag::eNORMAL | PxHitFlag::eDISTANCE | PxHitFlag::eFACE_INDEX;
+	PxHitFlags POutputFlags = PxHitFlag::ePOSITION | PxHitFlag::eNORMAL | PxHitFlag::eDISTANCE | PxHitFlag::eFACE_INDEX | PxHitFlag::eMESH_MULTIPLE | PxHitFlag::eMESH_BOTH_SIDES;
 	FPxQueryFilterCallbackSweep PQueryCallbackSweep(Params);
 
 	const FVector Delta = End - Start;
@@ -350,21 +350,23 @@ PxVec3 GeomReverseSweep_PhysX(const UWorld* World, const PxGeometry& PGeom, cons
 	const PxTransform PStartTM(U2PVector(Start), PGeomRot);
 	PxVec3 PDir = DeltaMag == 0.f ? PxVec3(1.f, 0.f, 0.f) : U2PVector(Delta / DeltaMag);	//If DeltaMag is 0 (equality of float is fine because we sanitized to 0) then just use any normalized direction
 
-	FDynamicHitBuffer<PxSweepHit> PSweepBuffer;
+	FDynamicHitBuffer<PxRaycastHit> PRayBuffer;
 
-	Scene->sweep(PGeom, PStartTM, PDir, DeltaMag, PSweepBuffer, POutputFlags, PQueryFilterData, &PQueryCallbackSweep);
-	PxI32 NumHits = PSweepBuffer.GetNumHits();
+	Scene->raycast(U2PVector(Start), PDir, DeltaMag, PRayBuffer, POutputFlags, PQueryFilterData);
+	PxI32 NumHits = PRayBuffer.GetNumHits();
 
 	PxRigidActor *PActor = NULL;
-	float CurDist = 0.0;
+	float CurDist = DeltaMag;
 
 	for (int32 i = 0; i < NumHits; i++)
 	{
-		PxSweepHit& PHit = PSweepBuffer.GetHits()[i];
-		if (PHit.actor == PActor && PHit.distance <= CurDist) {
-			CurDist = PHit.distance;
-		} else if (PHit.actor != PActor && PHit.distance >= CurDist) {
-			PActor = PHit.actor;
+		PxRaycastHit& PHit = PRayBuffer.GetHits()[i];
+		PxTransform PTest(PHit.position, PGeomRot);
+		PxOverlapBuffer overlap;
+		Scene->overlap(PGeom, PTest, overlap);
+		if (overlap.getNbAnyHits() > 1)
+			continue;
+		if (PHit.distance <= CurDist && PHit.distance > 10) {
 			CurDist = PHit.distance;
 		}
 	}
