@@ -11,14 +11,17 @@
 #include "Physics/ConstraintManager.h"
 #include "Physics/SimpleSpringSystem.h"
 #include "Physics/SpringSystem.h"
+#include "Networking/ParkourPlayerState.h"
 #include "Physics/PushSpringSystem.h"
 #include "Audio/FootstepAudioTableRow.h"
+#include "Spectator/ParkourSpectator.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -91,6 +94,9 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
 		FootSphereR->SetupAttachment(SkelMesh, FParkourFNames::Bone_Foot_R);
 	}
 
+	PlayerNameTag = CreateDefaultSubobject<UTextRenderComponent>(TEXT("PlayerName"));
+	PlayerNameTag->SetupAttachment(RootComponent);
+
 	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
 
@@ -113,6 +119,16 @@ void AParkourGameCharacter::BeginPlay()
 
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
+
+	if (PlayerNameTag)
+	{
+		PlayerNameTag->SetText(FText::FromString("Player Name"));
+
+		if (Role == ENetRole::ROLE_AutonomousProxy)
+		{
+			PlayerNameTag->SetHiddenInGame(true);
+		}
+	}
 
 	FootSphereL->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepL);
 	FootSphereR->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepR);
@@ -184,6 +200,31 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(AParkourGameCharacter, m_GripData);
 }
 
+void AParkourGameCharacter::OnRep_PlayerState()
+{
+	if (PlayerState && PlayerState != ParkourPlayerState)
+	{
+		if (ParkourPlayerState)
+		{
+			ParkourPlayerState->OnPlayerNameChanged.RemoveDynamic(this, &AParkourGameCharacter::OnPlayerNameChanged);
+		}
+
+		ParkourPlayerState = Cast<AParkourPlayerState>(PlayerState);
+
+		if (ParkourPlayerState)
+		{
+			ParkourPlayerState->OnPlayerNameChanged.AddDynamic(this, &AParkourGameCharacter::OnPlayerNameChanged);
+			OnPlayerNameChanged();
+		}
+	}
+}
+
+void AParkourGameCharacter::OnPlayerNameChanged()
+{
+	if (PlayerNameTag)
+		PlayerNameTag->SetText(FText::FromString(ParkourPlayerState->PlayerName));
+}
+
 void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -217,6 +258,9 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	}
 
 	GetParkourMovementComp()->AddForce(TotalForce);
+
+	if (PlayerNameTag)
+		PlayerNameTag->SetWorldRotation(FQuat::Identity);
 }
 
 
@@ -657,6 +701,48 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 	OnRep_RagdollState();
 }
 
+bool AParkourGameCharacter::IsFullRagdoll() const
+{
+	return m_RagdollState[(int32)EBodyPart::MAX] > 0;
+}
+
+// Should only be used in editor - switching to a spectator mid game could break minigames in a bad way
+#if WITH_EDITOR
+
+static void cmd_BecomeSpectator(UWorld* World)
+{
+	APlayerController* PlayerCtlr = World->GetFirstPlayerController();
+	AParkourGameCharacter* PlayerCharacter = PlayerCtlr ? Cast<AParkourGameCharacter>(PlayerCtlr->GetPawn()) : nullptr;
+
+	if (!IsValid(PlayerCharacter))
+		return;
+
+	PlayerCharacter->Server_BecomeSpectator();
+}
+
+FAutoConsoleCommandWithWorld BecomeSpectatorCmd(
+	TEXT("Parkour.Spectate"),
+	TEXT("Changes the player into a spectator"),
+	FConsoleCommandWithWorldDelegate::CreateStatic(cmd_BecomeSpectator));
+
+#endif
+
+
+bool AParkourGameCharacter::Server_BecomeSpectator_Validate()
+{
+	return true;
+}
+
+void AParkourGameCharacter::Server_BecomeSpectator_Implementation()
+{
+#if WITH_EDITOR
+	AParkourSpectator* SpecatorPawn = GetWorld()->SpawnActor<AParkourSpectator>(AParkourSpectator::StaticClass(), GetTransform());
+
+	GetController()->Possess(SpecatorPawn);
+	Destroy();
+#endif
+}
+
 void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) const
 {
 	if (Hand == EHandSideEnum::MAX) return;
@@ -706,7 +792,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
 		EnablePhysicalAnimation(false);
-		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
+		PlayerMesh->ResetAllBodiesSimulatePhysics();
 		GetParkourMovementComp()->SetMovementMode(MOVE_None);
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		PlayerMesh->SetSimulatePhysics(true);

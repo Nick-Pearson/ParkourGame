@@ -4,6 +4,8 @@
 #include "GameFramework/PlayerState.h"
 #include "ParkourPlayerState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnValueChangedEvent);
+
 UCLASS()
 class AParkourPlayerState : public APlayerState
 {
@@ -13,5 +15,10 @@ class AParkourPlayerState : public APlayerState
 
 public:
 	virtual bool ShouldBroadCastWelcomeMessage(bool bExiting = false) override;
+
+	virtual void OnRep_PlayerName() override;
+
+	UPROPERTY(BlueprintAssignable, Category = "ParkourPlayerState")
+	FOnValueChangedEvent OnPlayerNameChanged;
 
 };
