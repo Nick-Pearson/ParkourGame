@@ -1,6 +1,7 @@
 #include "ParkourGameCharacter.h"
 
 #include "ParkourMesh.h"
+#include "Physics/ReverseSweep.h"
 #include "ParkourInteractiveZone.h"
 #include "MiniGame/MiniGameManager.h"
 #include "Utils/ParkourFNames.h"
@@ -358,6 +359,102 @@ void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
 		return;
 
 	Server_EndGrip(Hand);
+}
+
+int AParkourGameCharacter::GetVisualTargets(FHitResult* VHit)
+{
+	const FVector Start = GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Head, EBoneSpaces::WorldSpace);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
+
+	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
+
+	FCollisionQueryParams TraceParams(FName(TEXT("Hand Trace")), true, GetParkourPlayerController()->GetPawn());
+
+	FVector Rot[12];
+	FVector End[12];
+	FHitResult Hit[12];
+	int vc = 0;
+
+
+	for (int i = 0; i < 12; i++) {
+		float r = i * 2.f;
+		Hit[i] = FHitResult(ForceInit);
+		Rot[i] = GetControlRotation().Add(22.f, 0.f, 0.f).Add(-r, 0.f, 0.f).Vector();
+		End[i] = Start + Rot[i] * 2048;
+
+		GetWorld()->LineTraceSingleByObjectType(
+			Hit[i],
+			Start,
+			End[i],
+			FCollisionObjectQueryParams(TraceObjectTypes)
+		);
+
+
+		if (Hit[i].GetActor())
+		{
+			bool rej = false;
+
+			// Reject duplicate points on vertical surfaces
+			for (int j = 0; j < vc; j++)
+				if (FVector::DistXY(VHit[j].ImpactPoint, Hit[i].ImpactPoint) < 10.f)
+					rej = true;
+
+			// Reject points on horizontal surfaces
+			if (FVector::Coincident(Hit[i].ImpactNormal, FVector(0.f, 0.f, -1.f)))
+				rej = true;
+
+			// Reject points on horizontal surfaces
+			if (FVector::Coincident(Hit[i].ImpactNormal, FVector(0.f, 0.f, 1.f)))
+				rej = true;
+
+			if (rej == false) {
+				VHit[vc] = Hit[i];
+				vc++;
+			}
+		}
+	}
+
+	return vc;
+}
+
+void AParkourGameCharacter::GetParkourTargets(EParkourTarget* PTarg, FHitResult* VHit, int vc)
+{
+	FCollisionShape HandCol = FCollisionShape::MakeCapsule(5.f, 25.f);
+	FRotator facing = GetControlRotation();
+
+	facing.SetComponentForAxis(EAxis::Y, 0.f);
+
+	for (int i = 0; i < vc; i++) {
+		TArray<FHitResult> OutResults;
+
+		FRotator rot = FRotator(0.f, VHit[i].ImpactNormal.Rotation().Yaw, 90.f);
+		FVector location = VHit[i].ImpactPoint;
+
+		FVector gripTarget = location + GeomReverseSweep(
+			GetWorld(), HandCol, FQuat(rot),
+			location,
+			location + FVector(0.f, 0.f, 1024.f),
+			ECollisionChannel::ECC_GameTraceChannel1,
+			FCollisionQueryParams::DefaultQueryParam,
+			FCollisionResponseParams::DefaultResponseParam
+		);
+
+		FVector vaultEnd = gripTarget + GeomReverseSweep(
+			GetWorld(), HandCol, FQuat(rot),
+			gripTarget,
+			gripTarget + (facing.Vector() * 1024),
+			ECollisionChannel::ECC_GameTraceChannel1,
+			FCollisionQueryParams::DefaultQueryParam,
+			FCollisionResponseParams::DefaultResponseParam
+		);
+
+		PTarg[i].Target = location;
+		PTarg[i].Rot = rot;
+		PTarg[i].GripTarget = gripTarget;
+		PTarg[i].VaultTarget = vaultEnd;
+	}
+
 }
 
 void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)

@@ -366,7 +366,7 @@ PxVec3 GeomReverseSweep_PhysX(const UWorld* World, const PxGeometry& PGeom, cons
 		Scene->overlap(PGeom, PTest, overlap);
 		if (overlap.getNbAnyHits() > 1)
 			continue;
-		if (PHit.distance <= CurDist && PHit.distance > 10) {
+		if (PHit.distance <= CurDist && PHit.distance > 0.f) {
 			CurDist = PHit.distance;
 		}
 	}
