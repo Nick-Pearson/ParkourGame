@@ -10,6 +10,7 @@
 #include "ParkourMesh.h"
 #include "Utils/ParkourTypes.h"
 #include "Physics/PushSpringSystem.h"
+#include "DrawDebugHelpers.h"
 #include "ParkourGameCharacter.generated.h"
 
 
@@ -34,6 +35,17 @@ enum class EHandSideEnum : uint8
 	MAX			UMETA(Hidden)
 };
 
+
+struct EParkourTarget
+{
+
+public:
+
+	FVector Target;
+	FRotator Rot;
+	FVector GripTarget;
+	FVector VaultTarget;
+};
 
 USTRUCT(BlueprintType)
 struct FGripData
@@ -194,6 +206,9 @@ protected:
 	void RagdollTorso();
 
 	void RagdollLegs();
+
+	int GetVisualTargets(FHitResult* VHit);
+	void GetParkourTargets(EParkourTarget* PTarg, FHitResult* VHit, int vc);
 
 	void BeginGrip(EHandSideEnum Hand);
 	void EndGrip(EHandSideEnum Hand);
