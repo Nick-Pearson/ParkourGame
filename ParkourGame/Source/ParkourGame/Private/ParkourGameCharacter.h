@@ -36,7 +36,7 @@ enum class EHandSideEnum : uint8
 };
 
 
-struct EParkourTarget
+struct FParkourTarget
 {
 
 public:
@@ -208,7 +208,7 @@ protected:
 	void RagdollLegs();
 
 	int GetVisualTargets(FHitResult* VHit);
-	void GetParkourTargets(EParkourTarget* PTarg, FHitResult* VHit, int vc);
+	void GetParkourTargets(FParkourTarget* PTarg, FHitResult* VHit, int vc);
 
 	void BeginGrip(EHandSideEnum Hand);
 	void EndGrip(EHandSideEnum Hand);

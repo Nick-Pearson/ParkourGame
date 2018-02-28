@@ -462,7 +462,7 @@ int AParkourGameCharacter::GetVisualTargets(FHitResult* VHit)
 	return vc;
 }
 
-void AParkourGameCharacter::GetParkourTargets(EParkourTarget* PTarg, FHitResult* VHit, int vc)
+void AParkourGameCharacter::GetParkourTargets(FParkourTarget* PTarg, FHitResult* VHit, int vc)
 {
 	FCollisionShape HandCol = FCollisionShape::MakeCapsule(5.f, 25.f);
 	FRotator facing = GetControlRotation();
@@ -560,7 +560,7 @@ void AParkourGameCharacter::Server_EndGrip_Implementation(EHandSideEnum Hand)
 
 void AParkourGameCharacter::StandUp()
 {
-	if (GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
+	if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
 
 	SetFullRagdoll(false);
 }
