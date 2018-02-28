@@ -568,6 +568,7 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 {
 	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
 	OnRep_RagdollState();
+	OnRagdoll.Broadcast(this);
 }
 
 void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) const
