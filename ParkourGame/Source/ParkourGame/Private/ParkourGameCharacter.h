@@ -24,7 +24,7 @@ class USpringSystem;
 class UParkourMovementComponent;
 class USphereComponent;
 
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FParkourGameCharacterEvent, AParkourGameCharacter*, Player);
 
 UENUM(BlueprintType)
 enum class EHandSideEnum : uint8
@@ -164,6 +164,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	class UDataTable* FootstepAudioTable;
 
+
+	//EVENTS
+
+	UPROPERTY(BlueprintAssignable, Category = "ParkourGameCharacter|Events")
+		FParkourGameCharacterEvent OnRagdoll;
+
 protected:
 
 	virtual void Tick(float DeltaSeconds);
@@ -226,6 +232,8 @@ protected:
 
 	void CapsuleToRagdoll();
 
+
+	UFUNCTION(BlueprintCallable, Category = "Minigame")
 	void JoinMinigame() { Server_JoinMinigame(); }
 
 	/**

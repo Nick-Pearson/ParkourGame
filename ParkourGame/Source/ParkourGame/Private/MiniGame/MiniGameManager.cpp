@@ -59,6 +59,16 @@ void AMiniGameManager::CreateGame(TSubclassOf<AMiniGameBase>& GameClass)
 	ActiveGame = WorldPtr->SpawnActor<AMiniGameBase>(GameClass.Get(), GetActorTransform());
 	ActiveGame->InitialiseGame(this);
 
+	if (ActiveGame->AutoJoin) {
+		TArray<AActor*> AllPlayers; 
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AParkourGameCharacter::StaticClass(), AllPlayers);
+
+		for (auto& Player : AllPlayers)
+		{
+			AddPlayerToGame(Cast<AParkourGameCharacter>(Player));
+		}
+	}
+
 	// Set a timer to check up on this game
 	GetWorld()->GetTimerManager().SetTimer(CheckGameTimer, this, &AMiniGameManager::CheckUpOnGame, GameStartTimeout);
 }
@@ -68,6 +78,12 @@ bool AMiniGameManager::AddPlayerToGame(AParkourGameCharacter* Player)
 	if (!ActiveGame || !Player) return false;
 
 	return ActiveGame->PlayerJoinGame(Player);
+}
+
+void AMiniGameManager::RemovePlayerFromGame(AParkourGameCharacter* Player)
+{
+	ActiveGame->PlayerLeaveGame(Player);
+	return;
 }
 
 void AMiniGameManager::GetUIDataForTeam(int32 index, FMiniGameTeamUIInfo& outInfo) const
@@ -90,7 +106,7 @@ void AMiniGameManager::EndGame(AMiniGameBase* Game, EMiniGameEndReason Reason)
 	OnGameOver.Broadcast(Game, Reason);
 	ActiveGame = nullptr;
 
-	SetNextGameTimer();
+	if (!SingleGame) SetNextGameTimer(); //
 }
 
 void AMiniGameManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

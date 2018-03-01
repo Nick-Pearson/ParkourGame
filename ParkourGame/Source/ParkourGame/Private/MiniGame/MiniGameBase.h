@@ -92,6 +92,9 @@ public:
 	// Called when a player requests to join this game, returns true if the player was able to join
 	virtual bool PlayerJoinGame(AParkourGameCharacter* Player);
 
+	// Called when a player leaves the game
+	virtual void PlayerLeaveGame(AParkourGameCharacter* Player);
+
 	// Called when the game object is spawned by the manager
 	virtual void InitialiseGame(AMiniGameManager* Manager);
 
@@ -140,7 +143,7 @@ public:
 	virtual bool CanBeStarted() const;
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
-	void SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin);
+	void SetMiniGameConfig(FText Name, FText Description, int32 NTeams, int32 PlayersPerTeam, int32 PointsToWin, bool JoinAutomatically, int32 GameLengthMax);
 
 	UFUNCTION(BlueprintPure, Category = "MiniGame")
 	int32 GetNumPlayers() const;
@@ -158,10 +161,15 @@ public:
 	int32 GetTeamFromPlayer(AParkourGameCharacter* Player) const;
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
+	FMiniGameTeam GetTeamFromID(int32 TeamID) const;
+
+	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	void ModifyScore(int32 TeamID, int32 Change, int32& NewScore);
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	int32 GetScore(int32 TeamID) const;
+
+
 
 public:
 
@@ -185,6 +193,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
 	int32 ScoreToWin = 5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
+	int32 GameMaxLength = 300;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
+	bool AutoJoin = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "MiniGame")
 	FDateTime CountdownStartTime;

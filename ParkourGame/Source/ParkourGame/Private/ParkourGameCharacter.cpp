@@ -134,6 +134,16 @@ void AParkourGameCharacter::BeginPlay()
 	FootSphereR->OnComponentBeginOverlap.AddDynamic(this, &AParkourGameCharacter::PlayFootstepR);
 
 	SetVisibleInXRay(true);
+
+	//If there is an 'autojoin' game in progress, join it
+
+	AMiniGameManager* Mgr = SingletonHelper->GetSingletonObject<AMiniGameManager>(GetWorld());
+	if (Mgr) {
+		AMiniGameBase* ActiveGame = Mgr->GetActiveGame();
+		if (ActiveGame) {
+			if (ActiveGame->AutoJoin) Mgr->AddPlayerToGame(this);
+		}
+	}
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
@@ -699,6 +709,7 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 {
 	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
 	OnRep_RagdollState();
+	OnRagdoll.Broadcast(this);
 }
 
 bool AParkourGameCharacter::IsFullRagdoll() const
