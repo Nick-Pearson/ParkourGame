@@ -2,6 +2,65 @@
 
 Kept up to date with notes from latest meetings
 
+## Team meeting 15/02/18
+
+### Absent:
+
+* Jonas – Ill
+* Nick – Away
+
+### Context:
+
+Less than 2 weeks to the Testable Multiplayer Prototype (feb 28)
+
+Need to start tying pieces together over the next week 
+
+### Updates:
+
+__James:__
+* Leaderboards api implementation for web
+
+__Ben:__
+* Looking into texturing in maya
+
+__David:__
+* No progress on tackling
+
+__Nick:__
+* Scoreboards in game
+* Leaderboard implementation in unreal
+
+__Jonas:__
+  
+
+__Corin:__
+* Ball-based game mode introduced
+* Tuning of game management
+
+### Moving forward:
+
+* Meeting for game physics/mechanics nick/corin/david/jonas
+* Meeting for texturing early next week ben/corin
+* Discussion on server handling corin/james/nick
+
+__James__:
+* Leaderboard website
+* Restructuring AWS server and lobby screen
+
+__Ben__: 
+* Texturing arena map
+
+__David/Jonas__:
+* Continuing work on physics/mechanics
+
+__Nick__:
+* Going to be setting up static camera panning for spectators next week
+
+__Corin__:
+* Tightening up minigame management 
+* Ballgame – working with mechanics (jonas) to get it functional
+
+
 ## 8. Meeting with Tilo and team meeting afterwards 08/02/18 (10am MVB)
 
 Tilo went over our results from last time, he seemed ok with most ideas apart from the XRay vision system for keeping players informed and our choice to stick to keyboard and mouse
