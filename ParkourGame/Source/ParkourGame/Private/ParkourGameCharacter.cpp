@@ -274,7 +274,7 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 }
 
 
-AParkourPlayerController* AParkourGameCharacter::GetParkourPlayerController()
+AParkourPlayerController* AParkourGameCharacter::GetParkourPlayerController() const
 {
 	return Cast<AParkourPlayerController>(Controller);
 }
@@ -351,6 +351,21 @@ FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
 	return box.GetClosestPointTo(HandPos);
 }
 
+bool AParkourGameCharacter::GetParkourTarget(EHandSideEnum HandSide, FParkourTarget& Target)
+{
+  FVector HandPos;
+  if (HandSide == EHandSideEnum::HS_Left)
+  {
+    HandPos = GetMesh()->GetSocketLocation("Hand_lSocket");
+  }
+  else
+  {
+    HandPos = GetMesh()->GetSocketLocation("Hand_rSocket");
+  }
+
+  return GetParkourTargetClosestTo(HandPos, Target);
+}
+
 void AParkourGameCharacter::TurnAtRate(float Rate)
 {
 	// calculate delta for this frame from the rate information
@@ -415,75 +430,75 @@ void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
 	Server_EndGrip(Hand);
 }
 
-int AParkourGameCharacter::GetVisualTargets(FHitResult* VHit)
+void AParkourGameCharacter::GetVisualTargets(const FVector& Start, TArray<FHitResult>& outVisualHits) const
 {
-	const FVector Start = GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Head, EBoneSpaces::WorldSpace);
-
 	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
 
 	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
 
-	FCollisionQueryParams TraceParams(FName(TEXT("Hand Trace")), true, GetParkourPlayerController()->GetPawn());
+	FCollisionQueryParams TraceParams(FName(TEXT("Hand Trace")), true, this);
 
-	FVector Rot[12];
-	FVector End[12];
-	FHitResult Hit[12];
-	int vc = 0;
+  const int32 numSteps = 12;
+  outVisualHits.Empty(numSteps);
 
-
-	for (int i = 0; i < 12; i++) {
-		float r = i * 2.f;
-		Hit[i] = FHitResult(ForceInit);
-		Rot[i] = GetControlRotation().Add(22.f, 0.f, 0.f).Add(-r, 0.f, 0.f).Vector();
-		End[i] = Start + Rot[i] * 2048;
+	for (int i = 0; i < numSteps; i++) {
+    const float stepSize = 8.f;
+		float r = i * stepSize;
+		FHitResult Hit(ForceInit);
+		const FVector Rot = GetActorRotation().Add(0.5f * numSteps * stepSize, 0.f, 0.f).Add(-r, 0.f, 0.f).Vector();
+		const FVector End = Start + Rot * 2048;
 
 		GetWorld()->LineTraceSingleByObjectType(
-			Hit[i],
+			Hit,
 			Start,
-			End[i],
+			End,
 			FCollisionObjectQueryParams(TraceObjectTypes)
 		);
+    
+    //DrawDebugLine(GetWorld(), Start, End, FColor::Red);
 
+		if (!Hit.GetActor())
+      continue;
+		
+		bool rej = false;
 
-		if (Hit[i].GetActor())
-		{
-			bool rej = false;
+		// Reject duplicate points on vertical surfaces
+    for (const FHitResult& VHit : outVisualHits)
+    {
+      if (FVector::DistXY(VHit.ImpactPoint, Hit.ImpactPoint) < 10.f)
+      {
+        rej = true;
+        break;
+      }
+    }
 
-			// Reject duplicate points on vertical surfaces
-			for (int j = 0; j < vc; j++)
-				if (FVector::DistXY(VHit[j].ImpactPoint, Hit[i].ImpactPoint) < 10.f)
-					rej = true;
+		// Reject points on horizontal surfaces
+		if (FVector::Coincident(Hit.ImpactNormal, FVector(0.f, 0.f, -1.f)))
+			rej = true;
 
-			// Reject points on horizontal surfaces
-			if (FVector::Coincident(Hit[i].ImpactNormal, FVector(0.f, 0.f, -1.f)))
-				rej = true;
+		// Reject points on horizontal surfaces
+		if (FVector::Coincident(Hit.ImpactNormal, FVector(0.f, 0.f, 1.f)))
+			rej = true;
 
-			// Reject points on horizontal surfaces
-			if (FVector::Coincident(Hit[i].ImpactNormal, FVector(0.f, 0.f, 1.f)))
-				rej = true;
-
-			if (rej == false) {
-				VHit[vc] = Hit[i];
-				vc++;
-			}
+		if (rej == false) {
+			outVisualHits.Add(Hit);
 		}
 	}
-
-	return vc;
 }
 
-void AParkourGameCharacter::GetParkourTargets(FParkourTarget* PTarg, FHitResult* VHit, int vc)
+void AParkourGameCharacter::GetParkourTargets(TArray<FParkourTarget>& outPTargs, const TArray<FHitResult>& VHits) const
 {
 	FCollisionShape HandCol = FCollisionShape::MakeCapsule(5.f, 25.f);
 	FRotator facing = GetControlRotation();
 
 	facing.SetComponentForAxis(EAxis::Y, 0.f);
 
-	for (int i = 0; i < vc; i++) {
-		TArray<FHitResult> OutResults;
+  outPTargs.Empty(VHits.Num());
 
-		FRotator rot = FRotator(0.f, VHit[i].ImpactNormal.Rotation().Yaw, 90.f);
-		FVector location = VHit[i].ImpactPoint;
+	for (const FHitResult& VHit : VHits)
+  {
+		FRotator rot = FRotator(0.f, VHit.ImpactNormal.Rotation().Yaw, 90.f);
+		FVector location = VHit.ImpactPoint;
 
 		FVector gripTarget = location + GeomReverseSweep(
 			GetWorld(), HandCol, FQuat(rot),
@@ -503,12 +518,40 @@ void AParkourGameCharacter::GetParkourTargets(FParkourTarget* PTarg, FHitResult*
 			FCollisionResponseParams::DefaultResponseParam
 		);
 
-		PTarg[i].Target = location;
-		PTarg[i].Rot = rot;
-		PTarg[i].GripTarget = gripTarget;
-		PTarg[i].VaultTarget = vaultEnd;
+    FParkourTarget PTarg;
+    PTarg.Target = location;
+    PTarg.Rot = rot;
+    PTarg.GripTarget = gripTarget;
+    PTarg.VaultTarget = vaultEnd;
+
+    outPTargs.Add(PTarg);
 	}
 
+}
+
+bool AParkourGameCharacter::GetParkourTargetClosestTo(const FVector& Location, FParkourTarget& outTarget)
+{
+  TArray<FHitResult> VHits;
+  TArray<FParkourTarget> PTargs;
+
+  GetVisualTargets(Location, VHits);
+  GetParkourTargets(PTargs, VHits);
+
+  if (PTargs.Num() == 0) return false;
+
+  float curDist = FLT_MAX;
+
+  for (const FParkourTarget& PTarg : PTargs)
+  {
+    float dist = (PTarg.Target - Location).SizeSquared();
+    if (dist < curDist)
+    {
+      curDist = dist;
+      outTarget = PTarg;
+    }
+  }
+
+  return true;
 }
 
 void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
@@ -548,13 +591,20 @@ bool AParkourGameCharacter::Server_BeginGrip_Validate(EHandSideEnum Hand) { retu
 
 void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 {
-	if (Hand == EHandSideEnum::MAX ||
-		!GetNearestParkourObject())
+	if (Hand == EHandSideEnum::MAX)
 		return;
 	
+  FParkourTarget Target;
+  if (!GetParkourTarget(Hand, Target)) return;
+
+  float DistSqrd = (GetActorLocation() - Target.GripTarget).SizeSquared();
+
+  if (DistSqrd > FMath::Square(200.0f))
+    return;
+
 	FGripData& Data = m_GripData[(int32)Hand];
 
-	Data.gripTarget = GetParkourHandTarget(Hand);
+  Data.gripTarget = Target.GripTarget;
 	Data.isGripping = true;
 	OnRep_GripData();
 }

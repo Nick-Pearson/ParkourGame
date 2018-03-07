@@ -36,14 +36,24 @@ enum class EHandSideEnum : uint8
 };
 
 
+USTRUCT(BlueprintType)
 struct FParkourTarget
 {
 
+  GENERATED_BODY()
+
 public:
 
+  UPROPERTY(BlueprintReadOnly, Category = "ParkourTarget")
 	FVector Target;
+
+  UPROPERTY(BlueprintReadOnly, Category = "ParkourTarget")
 	FRotator Rot;
+
+  UPROPERTY(BlueprintReadOnly, Category = "ParkourTarget")
 	FVector GripTarget;
+
+  UPROPERTY(BlueprintReadOnly, Category = "ParkourTarget")
 	FVector VaultTarget;
 };
 
@@ -213,8 +223,13 @@ protected:
 
 	void RagdollLegs();
 
-	int GetVisualTargets(FHitResult* VHit);
-	void GetParkourTargets(FParkourTarget* PTarg, FHitResult* VHit, int vc);
+  // This function uses multiple traces in front of the player and outputs a list of the trace results that pass criteria
+	void GetVisualTargets(const FVector& Start, TArray<FHitResult>& outVHits) const;
+
+  // parses a set of hit results and outputs an array of ParkourTargets from those hits
+	void GetParkourTargets(TArray<FParkourTarget>& outPTargs, const TArray<FHitResult>& VHits) const;
+
+  bool GetParkourTargetClosestTo(const FVector& Location, FParkourTarget& outTarget);
 
 	void BeginGrip(EHandSideEnum Hand);
 	void EndGrip(EHandSideEnum Hand);
@@ -241,8 +256,11 @@ protected:
 	* @param handSide	Used to determine whether the function is calculating for the left or right hand
 	*/
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	FVector GetParkourHandTarget(EHandSideEnum handSide);
+
+  UFUNCTION(BlueprintCallable)
+  bool GetParkourTarget(EHandSideEnum HandSide, FParkourTarget& Target);
 
 	/**
 	* Returns pointer to closest ParkourMesh object
@@ -307,7 +325,7 @@ public:
 	void GetPushData(EHandSideEnum Hand, FPushData& Data) const;
 
 private:
-	AParkourPlayerController* GetParkourPlayerController();
+	AParkourPlayerController* GetParkourPlayerController() const;
 
 	// returns true if the location is within a 90 radius in front of the player
 	bool IsWithinFieldOfView(const FVector& Location) const;

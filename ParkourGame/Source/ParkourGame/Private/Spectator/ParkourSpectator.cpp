@@ -46,7 +46,7 @@ void AParkourSpectator::TargetRandomPlayer()
 
 	if (ValidTargets.Num() == 0) return;
 
-	SetViewedActor(ValidTargets[FMath::RandHelper(ValidTargets.Num() - 1)]);
+	SetViewedActor(ValidTargets[FMath::RandHelper(ValidTargets.Num())]);
 }
 
 void AParkourSpectator::SwitchCamera()
