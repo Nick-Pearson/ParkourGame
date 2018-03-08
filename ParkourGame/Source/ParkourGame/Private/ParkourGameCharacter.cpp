@@ -264,7 +264,7 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 			m_GripData[i].ArmSpring->Tick(DeltaSeconds);
 			TotalForce += m_GripData[i].ArmSpring->GetSpringForce();
 		} else if (m_VaultData[i].isVaulting) {
-			if (FVector::DistSquared(m_VaultData[i].vaultTarget, GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace)) > 100)
+			if (FVector::DistSquared(m_VaultData[i].vaultTarget, GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace)) > FMath::Square(100.0f))
 				Server_EndGrip((EHandSideEnum)i);
 		}
 		/*else if (m_PushData[i].ArmSpring && m_PushData[i].isPushing) {
@@ -605,18 +605,6 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 
 	FVector pathToActor = Target.GripTarget - GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Neck);
 	float DistSqrd = pathToActor.SizeSquared();
-
-	DrawDebugLine(
-		GetWorld(),
-		GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Neck),
-		Target.GripTarget,
-		FColor(0, 255, 0),
-		true, 4.f, 0,
-		1.333
-	);
-	
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Blue, FString::Printf(TEXT("Z = %f"), pathToActor.Z));
 
 	if (DistSqrd > FMath::Square(150.0f))
 		return;

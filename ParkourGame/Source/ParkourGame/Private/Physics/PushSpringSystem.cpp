@@ -14,5 +14,5 @@ FVector UPushSpringSystem::GetSpringForce(const FVector& newPoint2) const
 	FVector Output = (Point1 - Point2);
 	Output.SetComponentForAxis(EAxis::Y, 45.f);
 	Output.Normalize();
-	return FVector::UpVector * 500;
+	return FVector::UpVector * 200;
 }
