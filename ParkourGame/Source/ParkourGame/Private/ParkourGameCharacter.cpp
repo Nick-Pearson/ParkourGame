@@ -40,7 +40,7 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-
+	
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
@@ -114,7 +114,8 @@ void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherA
 void AParkourGameCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
+	GetCapsuleComponent()->SetVisibility(true);
+	GetCapsuleComponent()->SetHiddenInGame(false);
 	EnablePhysicalAnimation();
 
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
@@ -239,7 +240,9 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	CapsuleToRagdoll();
-
+	
+	UE_LOG(LogTemp, Warning, TEXT("Your message %f"), Time_to_Floor());
+	
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
 	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
@@ -271,6 +274,8 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 
 	if (PlayerNameTag)
 		PlayerNameTag->SetWorldRotation(FQuat::Identity);
+
+	
 }
 
 
@@ -371,6 +376,7 @@ void AParkourGameCharacter::RagdollBody()
 void AParkourGameCharacter::RagdollArmR()
 {
 	SetRagdollOnBodyPart(EBodyPart::RightArm, true);
+	Proto_Roll();
 }
 
 void AParkourGameCharacter::RagdollArmL()
@@ -516,7 +522,7 @@ void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
 	if (Hand == EHandSideEnum::MAX)
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("Your message"));
+	//UE_LOG(LogTemp, Warning, TEXT("Your message"));
 
 	FPushData& Data = m_PushData[(int32)Hand];
 
@@ -802,22 +808,23 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
 		EnablePhysicalAnimation(false);
 		PlayerMesh->ResetAllBodiesSimulatePhysics();
 		GetParkourMovementComp()->SetMovementMode(MOVE_None);
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		PlayerMesh->SetSimulatePhysics(true);
 		return;
 	}
 	else
-	{
+	{	
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		EnablePhysicalAnimation(true);
+		GetParkourMovementComp()->SetMovementMode(MOVE_Walking);
+		Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
 		PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
 		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -90.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
-		GetParkourMovementComp()->SetMovementMode(MOVE_Walking);
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		EnablePhysicalAnimation();
 	}
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
 	{

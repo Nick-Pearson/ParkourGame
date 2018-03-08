@@ -290,6 +290,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Physics")
 	bool IsFullRagdoll() const;
 
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	float Time_to_Floor() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void Proto_Roll();
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
 
