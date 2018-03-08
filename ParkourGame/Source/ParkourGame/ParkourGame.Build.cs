@@ -8,7 +8,7 @@ public class ParkourGame : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "PhysX", "APEX", "PhysXCookingLib", "RuntimePhysXCooking", "PhysXCooking"});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "PhysX", "APEX"});
         PrivateDependencyModuleNames.AddRange(new string[] { "HTTP", "LowEntryJson" });
 	}
 }
