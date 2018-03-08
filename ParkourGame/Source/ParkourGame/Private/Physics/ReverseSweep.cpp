@@ -5,6 +5,7 @@
 #include "Runtime/Engine/Private/PhysicsEngine/PhysXSupport.h"
 
 #pragma region STD PHYSX CODE
+#if WITH_EDITOR
 
 namespace ECollisionQuery
 {
@@ -211,6 +212,8 @@ PxQueryHitType::Enum FPxQueryFilterCallbackSweep::postFilter(const PxFilterData&
 	}
 }
 
+#endif
+
 struct FScopedMultiSceneReadLock
 {
 	FScopedMultiSceneReadLock()
@@ -252,7 +255,7 @@ struct FScopedMultiSceneReadLock
 	PxScene* SceneLocks[PST_MAX];
 };
 
-PxQueryFlags StaticDynamicQueryFlags(const FCollisionQueryParams& Params)
+PxQueryFlags pk_StaticDynamicQueryFlags(const FCollisionQueryParams& Params)
 {
 	switch (Params.MobilityType)
 	{
@@ -335,7 +338,7 @@ PxVec3 GeomReverseSweep_PhysX(const UWorld* World, const PxGeometry& PGeom, cons
 {
 	// Create filter data used to filter collisions
 	PxFilterData PFilter = CreateQueryFilterData(TraceChannel, Params.bTraceComplex, ResponseParams.CollisionResponse, Params, ObjectParams, true);
-	PxQueryFilterData PQueryFilterData(PFilter, StaticDynamicQueryFlags(Params) | PxQueryFlag::ePREFILTER | PxQueryFlag::ePOSTFILTER | PxQueryFlag::eNO_BLOCK);
+	PxQueryFilterData PQueryFilterData(PFilter, pk_StaticDynamicQueryFlags(Params) | PxQueryFlag::ePREFILTER | PxQueryFlag::ePOSTFILTER | PxQueryFlag::eNO_BLOCK);
 	PxHitFlags POutputFlags = PxHitFlag::ePOSITION | PxHitFlag::eNORMAL | PxHitFlag::eDISTANCE | PxHitFlag::eFACE_INDEX | PxHitFlag::eMESH_MULTIPLE | PxHitFlag::eMESH_BOTH_SIDES;
 	FPxQueryFilterCallbackSweep PQueryCallbackSweep(Params);
 
@@ -380,6 +383,7 @@ PxVec3 GeomReverseSweep_PhysX(const UWorld* World, const PxGeometry& PGeom, cons
 #pragma endregion
 
 #pragma region MORE STD PHYSX CODE
+#if WITH_EDITOR
 
 static const PxQuat CapsuleRotator(0.f, 0.707106781f, 0.f, 0.707106781f);
 
@@ -486,4 +490,5 @@ PxFilterData CreateQueryFilterData(const uint8 MyChannel, const bool bTraceCompl
 	}
 }
 
+#endif
 #pragma endregion

@@ -32,6 +32,8 @@ AParkourGameGameMode::AParkourGameGameMode()
 FString AParkourGameGameMode::InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal /*= TEXT("")*/)
 {
 	FString msg = Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
+
+  UE_LOG(LogTemp, Warning, TEXT("OPTIONS: %s"), *Options);
 	return msg;
 }
 

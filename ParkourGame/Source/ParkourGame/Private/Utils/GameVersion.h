@@ -5,8 +5,8 @@
 #include "GameVersion.generated.h"
 
 #define GAME_VERSION_MAJOR 0
-#define GAME_VERSION_MINOR 3
-#define GAME_VERSION_PATCH 1
+#define GAME_VERSION_MINOR 4
+#define GAME_VERSION_PATCH 0
 
 USTRUCT(BlueprintType)
 struct FGameVersion
