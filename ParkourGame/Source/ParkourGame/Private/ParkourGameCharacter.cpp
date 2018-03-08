@@ -193,9 +193,12 @@ void AParkourGameCharacter::PostInitializeComponents()
 
 	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
 	{
+		/*
 		m_PushData[i].ArmSpring = NewObject<UPushSpringSystem>(this);
 		m_PushData[i].ArmSpring->SpringConstant = 5000.0f;
 		m_PushData[i].ArmSpring->SpringDampening = 100.0f;
+		*/
+		m_VaultData[i].ArmSpring = NewObject<UPushSpringSystem>(this);
 		m_GripData[i].ArmSpring = NewObject<USpringSystem>(this);
 		m_GripData[i].ArmSpring->SpringConstant = 5000.0f;
 		m_GripData[i].ArmSpring->SpringDampening = 100.0f;
@@ -260,11 +263,14 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 			m_GripData[i].ArmSpring->Point2 = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
 			m_GripData[i].ArmSpring->Tick(DeltaSeconds);
 			TotalForce += m_GripData[i].ArmSpring->GetSpringForce();
+		} else if (m_VaultData[i].isVaulting) {
+			if (FVector::DistSquared(m_VaultData[i].vaultTarget, GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace)) > 100)
+				Server_EndGrip((EHandSideEnum)i);
 		}
-		else if (m_PushData[i].ArmSpring && m_PushData[i].isPushing) {
+		/*else if (m_PushData[i].ArmSpring && m_PushData[i].isPushing) {
 			m_PushData[i].ArmSpring->Point3 = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
 			m_PushData[i].ArmSpring->Tick(DeltaSeconds);
-		}
+		}*/
 	}
 
 	GetParkourMovementComp()->AddForce(TotalForce);
@@ -554,7 +560,7 @@ bool AParkourGameCharacter::GetParkourTargetClosestTo(const FVector& Location, F
   return true;
 }
 
-void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
+/*void AParkourGameCharacter::BeginPush(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX)
 		return;
@@ -585,7 +591,7 @@ void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
 	UE_LOG(LogTemp, Warning, TEXT("Your springforce is %s"), *FString::SanitizeFloat(force));
 	
 	m_PushData[(int32)Hand].isPushing = false;
-}
+}*/
 
 bool AParkourGameCharacter::Server_BeginGrip_Validate(EHandSideEnum Hand) { return true; }
 
@@ -594,19 +600,42 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 	if (Hand == EHandSideEnum::MAX)
 		return;
 	
-  FParkourTarget Target;
-  if (!GetParkourTarget(Hand, Target)) return;
+	FParkourTarget Target;
+	if (!GetParkourTarget(Hand, Target)) return;
 
-  float DistSqrd = (GetActorLocation() - Target.GripTarget).SizeSquared();
+	FVector pathToActor = Target.GripTarget - GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Neck);
+	float DistSqrd = pathToActor.SizeSquared();
 
-  if (DistSqrd > FMath::Square(200.0f))
-    return;
+	DrawDebugLine(
+		GetWorld(),
+		GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Neck),
+		Target.GripTarget,
+		FColor(0, 255, 0),
+		true, 4.f, 0,
+		1.333
+	);
+	
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Blue, FString::Printf(TEXT("Z = %f"), pathToActor.Z));
 
-	FGripData& Data = m_GripData[(int32)Hand];
+	if (DistSqrd > FMath::Square(150.0f))
+		return;
 
-  Data.gripTarget = Target.GripTarget;
-	Data.isGripping = true;
-	OnRep_GripData();
+	if (pathToActor.Z > 0.f) {
+		//GRIP
+		FGripData& Data = m_GripData[(int32)Hand];
+
+		Data.gripTarget = Target.GripTarget;
+		Data.isGripping = true;
+		OnRep_GripData();
+	} else {
+		//VAULT
+		FVaultData& Data = m_VaultData[(int32)Hand];
+
+		Data.vaultTarget = Target.GripTarget;
+		Data.isVaulting = true;
+		OnRep_VaultData();
+	}
 }
 
 bool AParkourGameCharacter::Server_EndGrip_Validate(EHandSideEnum Hand) { return true; }
@@ -616,6 +645,11 @@ void AParkourGameCharacter::Server_EndGrip_Implementation(EHandSideEnum Hand)
 	if (Hand == EHandSideEnum::MAX) return;
 
 	m_GripData[(int32)Hand].isGripping = false;
+	if (m_VaultData[(int32)Hand].isVaulting) {
+		m_VaultData[(int32)Hand].isVaulting = false;
+		FVector Shoulder = GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
+		LaunchCharacter(m_VaultData[(int32)Hand].ArmSpring->GetSpringForce(Shoulder), false, false);
+	}
 }
 
 void AParkourGameCharacter::StandUp()
@@ -675,10 +709,10 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("GripL", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Left);
 	BIND_ACTION_CUSTOMEVENT("GripR", IE_Pressed, &AParkourGameCharacter::BeginGrip, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("GripR", IE_Released, &AParkourGameCharacter::EndGrip, EHandSideEnum::HS_Right);
-	BIND_ACTION_CUSTOMEVENT("PushR", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Right);
+	/*BIND_ACTION_CUSTOMEVENT("PushR", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("PushR", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Left);
-	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);
+	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);*/
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
@@ -810,6 +844,11 @@ void AParkourGameCharacter::GetGripData(EHandSideEnum Hand, FGripData& Data) con
 	Data = m_GripData[(int32)Hand];
 }
 
+void AParkourGameCharacter::GetVaultData(EHandSideEnum Hand, FVaultData& Data) const
+{
+	if (Hand == EHandSideEnum::MAX) return;
+	Data = m_VaultData[(int32)Hand];
+}
 void AParkourGameCharacter::SetVisibleInXRay(bool ShouldBeVisible)
 {
 	if (Role == ENetRole::ROLE_AutonomousProxy) return;
@@ -818,11 +857,12 @@ void AParkourGameCharacter::SetVisibleInXRay(bool ShouldBeVisible)
 	GetSkeletalMesh()->SetCustomDepthStencilValue(ShouldBeVisible ? 255 : 0);
 }
 
+/*
 void AParkourGameCharacter::GetPushData(EHandSideEnum Hand, FPushData& Data) const
 {
 	if (Hand == EHandSideEnum::MAX) return;
 	Data = m_PushData[(int32)Hand];
-}
+}*/
 
 bool AParkourGameCharacter::IsWithinFieldOfView(const FVector& Location) const
 {
@@ -890,6 +930,24 @@ void AParkourGameCharacter::OnRep_GripData()
 		else
 		{
 			m_GripData[i].ArmSpring->Initialise(FVector::ZeroVector, FVector::ZeroVector);
+		}
+	}
+}
+
+void AParkourGameCharacter::OnRep_VaultData()
+{
+	for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
+	{
+		FVector Shoulder = GetSkeletalMesh()->GetBoneLocation(i == (int32)EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
+		if (m_VaultData[i].isVaulting)
+		{
+			if (m_VaultData[i].ArmSpring->GetPoint1Location() != m_VaultData[i].vaultTarget)
+				m_VaultData[i].ArmSpring->Initialise(m_VaultData[i].vaultTarget, Shoulder);
+		}
+		else
+		{
+
+			m_VaultData[i].ArmSpring->Initialise(FVector::ZeroVector, FVector::ZeroVector);
 		}
 	}
 }

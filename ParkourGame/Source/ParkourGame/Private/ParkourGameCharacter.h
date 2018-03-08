@@ -75,6 +75,23 @@ public:
 };
 
 USTRUCT(BlueprintType)
+struct FVaultData
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly, Category = "VaultData")
+	bool isVaulting;
+
+	UPROPERTY(BlueprintReadOnly, Category = "VaultData")
+	FVector vaultTarget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "VaultData", NotReplicated)
+	UPushSpringSystem* ArmSpring;
+};
+
+USTRUCT(BlueprintType)
 struct FPushData
 {
 	GENERATED_BODY()
@@ -240,8 +257,8 @@ protected:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_EndGrip(EHandSideEnum Hand);
 
-	void BeginPush(EHandSideEnum Hand);
-	void EndPush(EHandSideEnum Hand);
+//	void BeginPush(EHandSideEnum Hand);
+//	void EndPush(EHandSideEnum Hand);
 
 	void StandUp();
 
@@ -318,11 +335,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Input")
 	void GetGripData(EHandSideEnum Hand, FGripData& Data) const;
 
+	UFUNCTION(BlueprintPure, Category = "Input")
+	void GetVaultData(EHandSideEnum Hand, FVaultData& Data) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Rendering")
 	void SetVisibleInXRay(bool ShouldBeVisible);
 
-	UFUNCTION(BlueprintPure, Category = "Input")
-	void GetPushData(EHandSideEnum Hand, FPushData& Data) const;
+	//UFUNCTION(BlueprintPure, Category = "Input")
+	//void GetPushData(EHandSideEnum Hand, FPushData& Data) const;
 
 private:
 	AParkourPlayerController* GetParkourPlayerController() const;
@@ -348,8 +368,14 @@ private:
 	UFUNCTION()
 	void OnRep_GripData();
 
+	UFUNCTION()
+	void OnRep_VaultData();
+
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_GripData)
 	FGripData m_GripData[(int32)EHandSideEnum::MAX];
+
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_VaultData)
+	FVaultData m_VaultData[(int32)EHandSideEnum::MAX];
 
 	UPROPERTY(Transient)
 	FPushData m_PushData[(int32)EHandSideEnum::MAX];

@@ -2,6 +2,7 @@
 
 
 const FName FParkourFNames::Bone_Head("head");
+const FName FParkourFNames::Bone_Neck("neck_01");
 
 const FName FParkourFNames::Bone_Upperarm_R("upperarm_r");
 const FName FParkourFNames::Bone_Lowerarm_R("lowerarm_r");
