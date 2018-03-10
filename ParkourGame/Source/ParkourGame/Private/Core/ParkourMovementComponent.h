@@ -16,4 +16,7 @@ public:
 
 	virtual float GetGravityZ() const override;
 
+  UFUNCTION(BlueprintCallable, Category = "Parkour")
+  void SetMaxAcceleration(float NewMaxAcceleration);
+
 };
