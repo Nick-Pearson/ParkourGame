@@ -5,6 +5,7 @@
 namespace FParkourFNames
 {
 	const extern FName Bone_Head;
+	const extern FName Bone_Neck;
 
 	const extern FName Bone_Upperarm_R;
 	const extern FName Bone_Lowerarm_R;
