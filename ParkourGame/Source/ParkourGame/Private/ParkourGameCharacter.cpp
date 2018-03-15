@@ -122,7 +122,8 @@ void AParkourGameCharacter::BeginPlay()
 
 	if (PlayerNameTag)
 	{
-		PlayerNameTag->SetText(FText::FromString("Player Name"));
+    if(PlayerNameTag->Text.IsEmpty())
+		  PlayerNameTag->SetText(FText::FromString(""));
 
 		if (Role == ENetRole::ROLE_AutonomousProxy)
 		{
