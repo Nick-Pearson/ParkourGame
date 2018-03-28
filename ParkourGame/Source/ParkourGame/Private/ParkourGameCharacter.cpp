@@ -212,6 +212,7 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 	DOREPLIFETIME(AParkourGameCharacter, m_GripData);
+  DOREPLIFETIME(AParkourGameCharacter, StandUpAnimRow);
 }
 
 void AParkourGameCharacter::OnRep_PlayerState()
@@ -237,6 +238,57 @@ void AParkourGameCharacter::OnPlayerNameChanged()
 {
 	if (PlayerNameTag)
 		PlayerNameTag->SetText(FText::FromString(ParkourPlayerState->PlayerName));
+}
+
+void AParkourGameCharacter::PlayStandUpAnimation()
+{
+  if (!StandUpAnimationTable) return;
+  
+  FStandUpMontageRow* Row = StandUpAnimationTable->FindRow<FStandUpMontageRow>(StandUpAnimRow, "");
+  
+  if (!Row || !Row->Montage) return;
+
+  PlayAnimMontage(Row->Montage);
+ 
+  if(AController* Controller = GetController())
+    Controller->SetIgnoreMoveInput(true);
+  
+  GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
+  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0) - 1.0f), false);
+}
+
+FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction) const
+{
+  if (!StandUpAnimationTable)
+    return NAME_None;
+
+  TArray<FName> RowNames = StandUpAnimationTable->GetRowNames();
+  TArray<FStandUpMontageRow*> ValidRows;
+  StandUpAnimationTable->GetAllRows<FStandUpMontageRow>("", ValidRows);
+
+  for (int32 i = ValidRows.Num()-1; i >=0; --i)
+  {
+    if (ValidRows[i]->Direction != Direction)
+    {
+      ValidRows.RemoveAtSwap(i);
+      RowNames.RemoveAtSwap(i);
+    }
+  }
+
+  if (RowNames.Num() < 1) return NAME_None;
+  return RowNames[FMath::RandHelper(RowNames.Num())];
+}
+
+void AParkourGameCharacter::ResetStandupAnim()
+{
+  if (AController* Controller = GetController())
+    Controller->SetIgnoreMoveInput(false);
+
+  if (HasAuthority())
+  {
+    // server should update to clients when the animation is over so that lagging clients don't play the animation stupidly late
+    StandUpAnimRow = NAME_None;
+  }
 }
 
 void AParkourGameCharacter::Tick(float DeltaSeconds)
@@ -891,12 +943,35 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	else
 	{
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
+
+    // calculate the facing of the ragdoll and the direction so the standing capsule can match
+    const FVector HeadLocation = PlayerMesh->GetBoneLocation(FParkourFNames::Bone_Head);
+    const FVector FootLocation = (PlayerMesh->GetBoneLocation(FParkourFNames::Bone_Foot_L) + PlayerMesh->GetBoneLocation(FParkourFNames::Bone_Foot_R)) * 0.5f;
+    const FVector NeckForward = PlayerMesh->GetBoneQuaternion(FParkourFNames::Bone_Neck).GetForwardVector();
+
+    const EStandUpDirection StandUpDir = NeckForward.Z > 0.0f ? EStandUpDirection::FaceUp : EStandUpDirection::FaceDown;
+
+    FVector RagdollDirection = HeadLocation - FootLocation;
+    RagdollDirection.Normalize();
+    RagdollDirection.Z = 0.0f;
+
+    // if the player is face up we then the head is close to the camera so we need to reverse
+    if (StandUpDir == EStandUpDirection::FaceUp) RagdollDirection *= -1;
+
+    SetActorRotation(FRotationMatrix::MakeFromX(RagdollDirection).Rotator());
+    
 		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis), false, true);
-		PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
+    PlayerMesh->AttachToComponent(Capsule, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true));
 		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -90.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
 		GetParkourMovementComp()->SetMovementMode(MOVE_Walking);
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		EnablePhysicalAnimation();
+
+    if (HasAuthority())
+    {
+      StandUpAnimRow = ChooseStandUpAnimation(StandUpDir);
+      OnRep_StandUpAnimRow();
+    }
 	}
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
 	{
@@ -939,6 +1014,13 @@ void AParkourGameCharacter::OnRep_VaultData()
 			m_VaultData[i].ArmSpring->Initialise(FVector::ZeroVector, FVector::ZeroVector);
 		}
 	}
+}
+
+void AParkourGameCharacter::OnRep_StandUpAnimRow()
+{
+  if (StandUpAnimRow == NAME_None) return;
+
+  PlayStandUpAnimation();
 }
 
 void AParkourGameCharacter::CapsuleToRagdoll()

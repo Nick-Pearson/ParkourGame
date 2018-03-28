@@ -11,6 +11,7 @@
 #include "Utils/ParkourTypes.h"
 #include "Physics/PushSpringSystem.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/DataTable.h"
 #include "ParkourGameCharacter.generated.h"
 
 
@@ -33,6 +34,29 @@ enum class EHandSideEnum : uint8
 	HS_Left		UMETA(DisplayName = "Left"),
 
 	MAX			UMETA(Hidden)
+};
+
+// direction the player ragdoll is facing at the start of a stand up animation
+UENUM(BlueprintType)
+enum class EStandUpDirection : uint8
+{
+  FaceDown,
+  FaceUp,
+};
+
+
+USTRUCT(BlueprintType)
+struct FStandUpMontageRow : public FTableRowBase
+{
+  GENERATED_BODY()
+
+public:
+
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StandUpMontageRow")
+  EStandUpDirection Direction;
+
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StandUpMontageRow")
+  UAnimMontage* Montage;
 };
 
 
@@ -191,6 +215,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	class UDataTable* FootstepAudioTable;
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+  class UDataTable* StandUpAnimationTable;
 
 	//EVENTS
 
@@ -301,6 +327,10 @@ protected:
 
 	UFUNCTION()
 	void OnPlayerNameChanged();
+  
+  void PlayStandUpAnimation();
+  FName ChooseStandUpAnimation(EStandUpDirection Direction) const;
+  void ResetStandupAnim();
 
 public:
 	/** Returns CameraBoom subobject **/
@@ -380,6 +410,14 @@ private:
 	UPROPERTY(Transient)
 	FPushData m_PushData[(int32)EHandSideEnum::MAX];
 
+  UFUNCTION()
+  void OnRep_StandUpAnimRow();
+
+  // which animation from the table we should play to stand up
+  UPROPERTY(ReplicatedUsing = OnRep_StandUpAnimRow)
+  FName StandUpAnimRow = NAME_None;
+
+  FTimerHandle ResetStandupHandle;
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;
