@@ -2,6 +2,72 @@
 
 Kept up to date with notes from latest meetings
 
+## Meeting with Tilo 
+
+* On Games day teams will be colour coded and represented with their logo
+* We should think about how to setup the room on the day (lights, loudspeakers, lounge area/drop in system)
+* Audio needs thinking about
+* We need to think about how to get the most out of schools testing day
+* Football atmosphere is very good
+* Simplify the navigation, should use WSAD to do most actions. We can meet with Asling to talk about this
+* Arena could be smaller or simpler
+* We should be able to show off more of the key tech
+
+## Before Easter Review
+
+__Tilo:__
+* Make hits a big emphasis, it is a key moment so make the most of it
+* Should be able to run/grab anywhere (wall running?)
+* Need a simpler or smaller room with fewer obstacles
+* Perhaps try more than one ball
+* Navigation is generally good, should move special features to be done using usual inputs to make it easier to pick up
+* Should consider where we want to use audio on games day
+* Use stronger theming
+* Electric shock effect for respawn? Perhaps also apply this to the invisible walls
+* Some visible damage effects, limbs falling off?
+* player spins while grabbing onto things
+
+__Beth:__
+* Feeling of momentum is good
+* Want to 'leap' at edges, at the moment the jump feels unsatisfying
+* Tackle button is difficult to use, want to use mouse click to take people down
+* Need to think of how to keep people invested beyond the 2 minute mark
+
+__Ian:__
+* Should remap the button inputs, currently the arrow keys are confusing
+* No way to know who is on which team
+* Need to distinguish different ends of the map
+* Add the X ray effect to the ball
+* Get more user testing, especially beginners
+
+__Neil:__
+* Look at the marking scheme, make sure we emphasise our strengths
+* Happy to look at draft reports
+I don't have any more notes for this, Corin?
+
+__Richard:__
+* I/O is confusing
+* Finding the ball is hard
+* Moving away from parkour was a good idea
+* Perhaps add a minimap?
+* Need to think about how we are testing our work
+* Ensure we have a high level strategy so we can make best use of time and resources
+* Get some american football stuff to fit with our theme
+
+__Carl:__
+* Feels fluid to run around
+* Keep CTF as a backup, it would be good to have more gamemodes
+* Setup for xbox controllers, even if this is only for a few PCs on the day
+* Make sure we can demonstrate everything to players
+
+__Conor:__
+* Kept using ASD keys and often found the camera and movement inputs difficult to use
+* Need better animation for bouncing off walls
+* Be clearer with the edge of the arena, it feels unnatural. Sometimes when you want to jump off you are stopped by an invisible wall
+* Sliding is cool
+* Too big and confusing overall
+* Hard to learn without being tedious
+
 ## Team meeting 15/02/18
 
 ### Absent:
