@@ -145,6 +145,14 @@ void AParkourGameCharacter::BeginPlay()
 			if (ActiveGame->AutoJoin) Mgr->AddPlayerToGame(this);
 		}
 	}
+
+  AMiniGameManager* GameManager = SingletonHelper->GetSingletonObject<AMiniGameManager>(GetWorld());
+
+  if (GameManager)
+  {
+    GameManager->OnPlayerJoinedTeam.AddDynamic(this, &AParkourGameCharacter::OnJoinedTeam);
+    GameManager->OnGameOver.AddDynamic(this, &AParkourGameCharacter::OnGameOver);
+  }
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
@@ -896,6 +904,25 @@ void AParkourGameCharacter::SetVisibleInXRay(bool ShouldBeVisible)
 
 	GetSkeletalMesh()->SetRenderCustomDepth(ShouldBeVisible);
 	GetSkeletalMesh()->SetCustomDepthStencilValue(ShouldBeVisible ? 255 : 0);
+}
+
+void AParkourGameCharacter::OnJoinedTeam(AMiniGameBase* Game, AParkourGameCharacter* Player, int32 TeamID)
+{
+  if (Player != this) return;
+
+  FMiniGameTeamUIInfo Info;
+  Game->GetManager()->GetUIDataForTeam(TeamID, Info);
+
+  if (Info.PlayerMaterial)
+  {
+    GetSkeletalMesh()->SetMaterial(0, Info.PlayerMaterial);
+  }
+}
+
+void AParkourGameCharacter::OnGameOver(AMiniGameBase* Game, EMiniGameEndReason Reason)
+{
+
+  GetSkeletalMesh()->SetMaterial(0, DefaultMaterial);
 }
 
 /*

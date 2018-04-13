@@ -28,6 +28,21 @@ class USphereComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FParkourGameCharacterEvent, AParkourGameCharacter*, Player);
 
 UENUM(BlueprintType)
+enum class EMiniGameEndReason : uint8
+{
+  // Not enough players joined to make the game valid to start
+  NotEnoughPlayers,
+
+  // A team has won the game
+  GameWon,
+
+  // Some players have dropped out of the game making it invalid
+  PlayersLeft,
+
+  MAX			UMETA(Hidden)
+};
+
+UENUM(BlueprintType)
 enum class EHandSideEnum : uint8
 { //enum for which hand is being used for calculations
 	HS_Right	UMETA(DisplayName = "Right"),
@@ -218,6 +233,10 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
   class UDataTable* StandUpAnimationTable;
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
+  class UMaterialInterface* DefaultMaterial;
+
+
 	//EVENTS
 
 	UPROPERTY(BlueprintAssignable, Category = "ParkourGameCharacter|Events")
@@ -373,6 +392,12 @@ public:
 
 	//UFUNCTION(BlueprintPure, Category = "Input")
 	//void GetPushData(EHandSideEnum Hand, FPushData& Data) const;
+
+  UFUNCTION()
+  void OnJoinedTeam(AMiniGameBase* Game, AParkourGameCharacter* Player, int32 TeamID);
+
+  UFUNCTION()
+  void OnGameOver(AMiniGameBase* Game, EMiniGameEndReason Reason);
 
 private:
 	AParkourPlayerController* GetParkourPlayerController() const;

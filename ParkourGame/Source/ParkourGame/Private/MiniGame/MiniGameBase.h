@@ -25,22 +25,6 @@ enum class EMiniGameState : uint8
 	MAX
 };
 
-
-UENUM(BlueprintType)
-enum class EMiniGameEndReason : uint8
-{
-	// Not enough players joined to make the game valid to start
-	NotEnoughPlayers,
-
-	// A team has won the game
-	GameWon,
-
-	// Some players have dropped out of the game making it invalid
-	PlayersLeft,
-
-	MAX			UMETA(Hidden)
-};
-
 USTRUCT(BlueprintType)
 struct FMiniGameTeamUIInfo : public FTableRowBase
 {
@@ -55,6 +39,10 @@ public:
 	// Colour used for the the team and flags
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FMiniGameTeamUIInfo")
 	FLinearColor TeamColour;
+
+  // Material used on players
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FMiniGameTeamUIInfo")
+  UMaterialInterface* PlayerMaterial;
 
 };
 
@@ -169,7 +157,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	int32 GetScore(int32 TeamID) const;
 
-
+  FORCEINLINE AMiniGameManager* GetManager() const { return GameManager; }
 
 public:
 
