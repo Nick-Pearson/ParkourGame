@@ -344,7 +344,8 @@ void AParkourGameCharacter::Roll_Start() {
 	}
 	if (!isRolling) {
 		isRolling = !isRolling;
-		capsule->SetCapsuleSize(OutRadius * 2,  OutRadius * 2, true); 
+		capsule->SetCapsuleSize(OutRadius * 2,  OutRadius * 2, true);
+		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 80));
 	}
 	else {
 		isRolling = !isRolling;
@@ -363,14 +364,17 @@ void AParkourGameCharacter::Tick_Roll(FVector& velocity, float DeltaSeconds)
 		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
 		initialised = true;
 	}
-	static FRotator rotator;
-	rotator = GetActorRotation();
-	float x_rotation = -velocity.X * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
-	float y_rotation = -velocity.Y * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
-	UE_LOG(LogTemp, Warning, TEXT("x velocity rotation should be: %f"), velocity.X);
+	USkeletalMeshComponent* mesh = GetSkeletalMesh();
 
-	rotator = rotator.Add(x_rotation, y_rotation, 0);
-	SetActorRotation(rotator);
+	static FRotator rotator;
+	rotator = mesh->GetRelativeTransform().Rotator();
+
+
+	float delta_rotation = velocity.Size() * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
+	//UE_LOG(LogTemp, Warning, TEXT("x velocity rotation should be: %f"), velocity.X);
+	rotator = rotator.Add(0, 0, delta_rotation);
+	mesh->SetRelativeRotation(rotator);
+	//SetActorRotation(rotator);
 }
 
 FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
