@@ -32,6 +32,7 @@
 #include "AudioDevice.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
+#include <cmath>
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
 
@@ -236,13 +237,16 @@ void AParkourGameCharacter::OnPlayerNameChanged()
 		PlayerNameTag->SetText(FText::FromString(ParkourPlayerState->PlayerName));
 }
 
+
+
 void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	CapsuleToRagdoll();
-	
-	UE_LOG(LogTemp, Warning, TEXT("Your message %f"), Time_to_Floor());
-	
+	if (isRolling) {
+		FVector velocity = GetVelocity();
+		Tick_Roll(velocity, DeltaSeconds);
+	}
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
 	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
@@ -326,8 +330,47 @@ void AParkourGameCharacter::Jump()
 {
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 		return;
-
 	Super::Jump();
+}
+
+void AParkourGameCharacter::Roll_Start() {
+	static bool initialised;
+	UCapsuleComponent* capsule = GetCapsuleComponent();
+	static float OutRadius;
+	static float OutHalfHeight;
+	if (!initialised) {
+		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
+		initialised = true;
+	}
+	if (!isRolling) {
+		isRolling = !isRolling;
+		capsule->SetCapsuleSize(OutRadius * 2,  OutRadius * 2, true); 
+	}
+	else {
+		isRolling = !isRolling;
+		capsule->SetCapsuleSize(OutRadius, OutHalfHeight, true);
+	}
+}
+
+// use this function to calculate how fast the ball should rotate
+void AParkourGameCharacter::Tick_Roll(FVector& velocity, float DeltaSeconds)
+{
+	static bool initialised;
+	UCapsuleComponent* capsule = GetCapsuleComponent();
+	static float OutRadius;
+	static float OutHalfHeight;
+	if (!initialised) {
+		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
+		initialised = true;
+	}
+	static FRotator rotator;
+	rotator = GetActorRotation();
+	float x_rotation = -velocity.X * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
+	float y_rotation = -velocity.Y * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
+	UE_LOG(LogTemp, Warning, TEXT("x velocity rotation should be: %f"), velocity.X);
+
+	rotator = rotator.Add(x_rotation, y_rotation, 0);
+	SetActorRotation(rotator);
 }
 
 FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
@@ -376,7 +419,6 @@ void AParkourGameCharacter::RagdollBody()
 void AParkourGameCharacter::RagdollArmR()
 {
 	SetRagdollOnBodyPart(EBodyPart::RightArm, true);
-	Proto_Roll();
 }
 
 void AParkourGameCharacter::RagdollArmL()
@@ -546,7 +588,7 @@ void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
 	float force = m_PushData[(int32)Hand].ArmSpring->GetSpringForce();
 	LaunchCharacter(GetControlRotation().Vector() * force, false, false);
 	UE_LOG(LogTemp, Warning, TEXT("Your springforce is %s"), *FString::SanitizeFloat(force));
-	
+
 	m_PushData[(int32)Hand].isPushing = false;
 }
 
@@ -587,7 +629,6 @@ void AParkourGameCharacter::StandUp()
 void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	check(PlayerInputComponent);
-
 	// helper macro that allows us to pass payload arguments through to input functions
 #define BIND_ACTION_CUSTOMEVENT(ActionName, KeyEvent, Func, ...) \
 	{ \
@@ -635,6 +676,9 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("PushR", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Left);
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);
+
+	//Roll controls
+	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &AParkourGameCharacter::Roll_Start);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }

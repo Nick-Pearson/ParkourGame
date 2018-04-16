@@ -123,6 +123,12 @@ class AParkourGameCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, Category = "Audio")
 	USphereComponent* FootSphereR;
 
+	UPROPERTY(VisibleAnywhere, Category = "Physics", meta = (AllowPrivateAccess = "true"))
+	FVector2D RollMagnitude;
+	
+
+
+
 public:
 	AParkourGameCharacter(const FObjectInitializer& ObjectInitializer);
   
@@ -293,8 +299,13 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	float Time_to_Floor() const;
 
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void Proto_Roll();
+	UFUNCTION(BlueprintCallable, Category = "Physics")
+	void Tick_Roll(FVector& velocity, float DeltaSeconds);
+
+	void Roll_Start();
+
+	UPROPERTY(BlueprintReadOnly, Category = "Physics")
+	bool isRolling = false;
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
