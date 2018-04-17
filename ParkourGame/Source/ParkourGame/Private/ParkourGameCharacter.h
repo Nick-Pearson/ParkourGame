@@ -431,6 +431,8 @@ public:
 
   UFUNCTION()
   void OnGameOver(AMiniGameBase* Game, EMiniGameEndReason Reason);
+  
+  void EnableJumping(bool Enable = true);
 
 private:
 	AParkourPlayerController* GetParkourPlayerController() const;
@@ -479,5 +481,7 @@ private:
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;
+
+  bool bCanJump = true;
 };
 

@@ -264,6 +264,8 @@ void AParkourGameCharacter::PlayStandUpAnimation()
  
   if(AController* Controller = GetController())
     Controller->SetIgnoreMoveInput(true);
+
+  EnableJumping(false);
   
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
   GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0) - 1.0f), false);
@@ -295,6 +297,8 @@ void AParkourGameCharacter::ResetStandupAnim()
 {
   if (AController* Controller = GetController())
     Controller->SetIgnoreMoveInput(false);
+
+  EnableJumping(true);
 
   if (HasAuthority())
   {
@@ -399,7 +403,8 @@ void AParkourGameCharacter::MoveRight(float Value)
 void AParkourGameCharacter::Jump()
 {
   ResetAFKTimer();
-	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
+
+	if (m_RagdollState[(int32)EBodyPart::MAX] > 0 || !bCanJump)
 		return;
 
 	Super::Jump();
@@ -1051,6 +1056,11 @@ void AParkourGameCharacter::EnablePhysicalAnimation(bool Enable /*= true*/)
 		PhysicalAnimation->SetSkeletalMeshComponent(nullptr);
 	}
 } 
+
+void AParkourGameCharacter::EnableJumping(bool Enable /*= true*/)
+{
+  bCanJump = Enable;
+}
 
 void AParkourGameCharacter::OnRep_RagdollState()
 {
