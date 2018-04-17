@@ -1174,7 +1174,7 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
 		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, 97.0));
+		Capsule->SetWorldLocation(SocketLocation);
 	}
 }
 
