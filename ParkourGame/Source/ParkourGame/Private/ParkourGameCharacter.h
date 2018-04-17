@@ -177,7 +177,7 @@ class AParkourGameCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
 	UPhysicalAnimationComponent* PhysicalAnimation;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
 	USimpleSpringSystem* LegSpring;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Physics", meta = (AllowPrivateAccess = "true"))
