@@ -31,6 +31,7 @@
 #include "Engine/DataTable.h"
 #include "AudioDevice.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "EngineUtils.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -119,6 +120,8 @@ void AParkourGameCharacter::BeginPlay()
 
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
+
+  OnRagdoll.AddDynamic(this, &AParkourGameCharacter::OnRagdollEvent);
 
 	if (PlayerNameTag)
 	{
@@ -660,6 +663,10 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX)
 		return;
+
+  // if we grab a ball then we are done
+  if (Server_GrabNearbyBall(Hand))
+    return;
 	
 	FParkourTarget Target;
 	if (!GetParkourTarget(Hand, Target)) return;
@@ -693,12 +700,64 @@ void AParkourGameCharacter::Server_EndGrip_Implementation(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX) return;
 
+  if (Server_DropBall(Hand))
+    return;
+
 	m_GripData[(int32)Hand].isGripping = false;
 	if (m_VaultData[(int32)Hand].isVaulting) {
 		m_VaultData[(int32)Hand].isVaulting = false;
 		FVector Shoulder = GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Upperarm_L : FParkourFNames::Bone_Upperarm_R, EBoneSpaces::WorldSpace);
 		LaunchCharacter(m_VaultData[(int32)Hand].ArmSpring->GetSpringForce(Shoulder), false, false);
 	}
+}
+
+bool AParkourGameCharacter::Server_GrabNearbyBall(EHandSideEnum Hand)
+{
+  if (!HasAuthority()) return false;
+
+  if (m_GripData[(int32)Hand].HeldBall.IsValid()) return false;
+
+  AActor* ClosestBall = nullptr;
+  float ClosestBallDist_sqrd = 0.0f;
+
+  FVector Position = GetActorLocation();
+
+  for (TActorIterator<AActor> It(GetWorld(), BallClass); It; ++It)
+  {
+    float Dist_sqrd = ((*It)->GetActorLocation() - Position).SizeSquared();
+
+    if (!ClosestBall || Dist_sqrd < ClosestBallDist_sqrd)
+    {
+      ClosestBallDist_sqrd = Dist_sqrd;
+      ClosestBall = *It;
+    }
+  }
+
+  if (!ClosestBall) return false;
+  if (ClosestBallDist_sqrd > FMath::Square(BallPickupDistance)) return false;
+
+  m_GripData[(int32)Hand].HeldBall = ClosestBall;
+
+  OnRep_GripData();
+  return true;
+}
+
+bool AParkourGameCharacter::Server_DropBall(EHandSideEnum Hand)
+{
+  if (!HasAuthority()) return false;
+  if (!m_GripData[(int32)Hand].HeldBall.IsValid()) return false;
+
+  m_GripData[(int32)Hand].HeldBall.Reset();
+  OnRep_GripData();
+  return true;
+}
+
+void AParkourGameCharacter::OnRagdollEvent()
+{
+  if (!HasAuthority()) return;
+
+  Server_DropBall(EHandSideEnum::HS_Left);
+  Server_DropBall(EHandSideEnum::HS_Right);
 }
 
 void AParkourGameCharacter::StandUp()
@@ -842,7 +901,7 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
 {
 	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
 	OnRep_RagdollState();
-	OnRagdoll.Broadcast(this);
+	OnRagdoll.Broadcast();
 }
 
 bool AParkourGameCharacter::IsFullRagdoll() const
@@ -1022,6 +1081,26 @@ void AParkourGameCharacter::OnRep_GripData()
 		{
 			m_GripData[i].ArmSpring->Initialise(FVector::ZeroVector, FVector::ZeroVector);
 		}
+
+    AActor* HeldBall = m_GripData[i].HeldBall.Get();
+    AActor* PreviousHeldBall = m_GripData[i].PreviousHeldBall.Get();
+
+    if (PreviousHeldBall != HeldBall)
+    {
+      if (PreviousHeldBall)
+      {
+        // drop the current ball
+        DropBall(PreviousHeldBall, (EHandSideEnum)i);
+        m_GripData[i].PreviousHeldBall.Reset();
+      }
+
+      if (HeldBall)
+      {
+        // pickup new ball
+        GrabBall(HeldBall, (EHandSideEnum)i);
+        m_GripData[i].PreviousHeldBall = HeldBall;
+      }
+    }
 	}
 }
 

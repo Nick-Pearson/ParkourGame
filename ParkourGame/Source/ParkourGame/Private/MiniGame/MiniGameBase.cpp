@@ -2,6 +2,7 @@
 
 #include "MiniGameManager.h"
 #include "../Utils/ParkourGameLogging.h"
+#include "../Core/ParkourGameState.h"
 
 #include "UnrealNetwork.h"
 
@@ -116,11 +117,20 @@ void AMiniGameBase::InitialiseGame(AMiniGameManager* Manager)
 
 void AMiniGameBase::OnGameStart()
 {
-	// add 5 seconds to allow for network propagation
+	// add 2 seconds to allow for network propagation
 	CountdownStartTime = FDateTime::Now() + FTimespan(0, 0, 2);
 	CountdownStartTime_Replicated = CountdownStartTime.GetTicks();
 
 	GameState = EMiniGameState::InProgress;
+
+  if (UWorld* WorldPtr = GetWorld())
+  {
+    AParkourGameState * GS = WorldPtr->GetGameState<AParkourGameState>();
+    GS->Net_PlayAnnouncerSound(EAnnouncerSound::Prepare);
+
+    FTimerHandle Handle;
+    WorldPtr->GetTimerManager().SetTimer(Handle, FTimerDelegate::CreateUObject(GS, &AParkourGameState::Net_PlayAnnouncerSound, EAnnouncerSound::Begin), 4.0f, false);
+  }
 
 	BPE_GameStart();
 }

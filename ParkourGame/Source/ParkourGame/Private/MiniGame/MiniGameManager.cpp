@@ -1,5 +1,7 @@
 #include "MiniGameManager.h"
 
+#include "../Core/ParkourGameState.h"
+
 #include "../UI/ParkourGameHUD.h"
 #include "../UI/ToasterInterface.h"
 #include "../UI/UIHelperLibrary.h"
@@ -105,6 +107,11 @@ void AMiniGameManager::EndGame(AMiniGameBase* Game, EMiniGameEndReason Reason)
 	Game->OnGameEnd(Reason);
 	OnGameOver.Broadcast(Game, Reason);
 	ActiveGame = nullptr;
+
+  if (Reason == EMiniGameEndReason::GameWon)
+  {
+    GetWorld()->GetGameState<AParkourGameState>()->Net_PlayAnnouncerSound(EAnnouncerSound::Game_Over);
+  }
 
 	if (!SingleGame) SetNextGameTimer(); //
 }

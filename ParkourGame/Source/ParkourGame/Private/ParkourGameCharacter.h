@@ -25,7 +25,7 @@ class USpringSystem;
 class UParkourMovementComponent;
 class USphereComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FParkourGameCharacterEvent, AParkourGameCharacter*, Player);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FParkourGameCharacterEvent);
 
 UENUM(BlueprintType)
 enum class EMiniGameEndReason : uint8
@@ -105,6 +105,12 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "GripData")
 	bool isGripping;
+
+  UPROPERTY(BlueprintReadOnly, Category = "GripData")
+  TWeakObjectPtr<AActor> HeldBall;
+
+  UPROPERTY(BlueprintReadOnly, Category = "GripData", NotReplicated)
+  TWeakObjectPtr<AActor> PreviousHeldBall;
 
 	UPROPERTY(BlueprintReadOnly, Category = "GripData")
 	FVector gripTarget;
@@ -236,6 +242,10 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   class UMaterialInterface* DefaultMaterial;
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
+  TSubclassOf<AActor> BallClass;
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
+  float BallPickupDistance = 200.0f;
 
 	//EVENTS
 
@@ -301,6 +311,21 @@ protected:
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_EndGrip(EHandSideEnum Hand);
+
+  UFUNCTION(BlueprintCallable, Category = "BallHandling")
+  bool Server_GrabNearbyBall(EHandSideEnum Hand);
+
+  UFUNCTION(BlueprintCallable, Category = "BallHandling")
+  bool Server_DropBall(EHandSideEnum Hand);
+
+  UFUNCTION(BlueprintImplementableEvent)
+  void GrabBall(AActor* Ball, EHandSideEnum Hand);
+
+  UFUNCTION(BlueprintImplementableEvent)
+  void DropBall(AActor* Ball, EHandSideEnum Hand);
+
+  UFUNCTION()
+  void OnRagdollEvent();
 
 //	void BeginPush(EHandSideEnum Hand);
 //	void EndPush(EHandSideEnum Hand);
