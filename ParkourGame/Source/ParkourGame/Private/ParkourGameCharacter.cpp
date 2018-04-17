@@ -117,6 +117,7 @@ void AParkourGameCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	EnablePhysicalAnimation();
+  ResetAFKTimer();
 
 	OnActorBeginOverlap.AddDynamic(this, &AParkourGameCharacter::BeginOverlap);
 	OnActorEndOverlap.AddDynamic(this, &AParkourGameCharacter::EndOverlap);
@@ -360,8 +361,12 @@ void AParkourGameCharacter::SubtickPhysics(float DeltaSeconds)
 
 void AParkourGameCharacter::MoveForward(float Value)
 {
-	if (!Controller || Value == 0.0f || m_RagdollState[(int32)EBodyPart::MAX] > 0)
-		return;
+  if (!Controller || Value == 0.0f)
+    return;
+
+  ResetAFKTimer();
+
+  if (m_RagdollState[(int32)EBodyPart::MAX] > 0) return;
 
 	// find out which way is forward
 	const FRotator Rotation = Controller->GetControlRotation();
@@ -374,8 +379,12 @@ void AParkourGameCharacter::MoveForward(float Value)
 
 void AParkourGameCharacter::MoveRight(float Value)
 {
-	if (!Controller || Value == 0.0f || m_RagdollState[(int32)EBodyPart::MAX] > 0)
+	if (!Controller || Value == 0.0f)
 		return;
+
+  ResetAFKTimer();
+
+  if (m_RagdollState[(int32)EBodyPart::MAX] > 0) return;
 	
 	// find out which way is right
 	const FRotator Rotation = Controller->GetControlRotation();
@@ -389,6 +398,7 @@ void AParkourGameCharacter::MoveRight(float Value)
 
 void AParkourGameCharacter::Jump()
 {
+  ResetAFKTimer();
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 		return;
 
@@ -438,12 +448,18 @@ bool AParkourGameCharacter::GetParkourTarget(EHandSideEnum HandSide, FParkourTar
 
 void AParkourGameCharacter::TurnAtRate(float Rate)
 {
+  if(!FMath::IsNearlyZero(Rate))
+    ResetAFKTimer();
+
 	// calculate delta for this frame from the rate information
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
 void AParkourGameCharacter::LookUpAtRate(float Rate)
 {
+  if (!FMath::IsNearlyZero(Rate))
+    ResetAFKTimer();
+
 	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
@@ -486,6 +502,7 @@ void AParkourGameCharacter::RagdollLegs()
 
 void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
 {
+  ResetAFKTimer();
 	if (Hand == EHandSideEnum::MAX)
 		return;
 
@@ -494,6 +511,7 @@ void AParkourGameCharacter::BeginGrip(EHandSideEnum Hand)
 
 void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
 {
+  ResetAFKTimer();
 	if (Hand == EHandSideEnum::MAX)
 		return;
 
@@ -760,8 +778,29 @@ void AParkourGameCharacter::OnRagdollEvent()
   Server_DropBall(EHandSideEnum::HS_Right);
 }
 
+void AParkourGameCharacter::ResetAFKTimer()
+{
+#if !WITH_EDITOR
+  if (Role != ROLE_AutonomousProxy) return;
+
+  FTimerManager& Mgr = GetWorld()->GetTimerManager();
+  
+  Mgr.ClearTimer(AFKTimerHandle);
+  AFKTimerHandle.Invalidate();
+
+  Mgr.SetTimer(AFKTimerHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::LogoutPlayer), AFKLogoutTime, false);
+#endif
+}
+
+void AParkourGameCharacter::LogoutPlayer()
+{
+  static const FString LobbyMapName("entryMap");
+  GEngine->SetClientTravel(GetWorld(), *LobbyMapName, TRAVEL_Absolute);
+}
+
 void AParkourGameCharacter::StandUp()
 {
+  ResetAFKTimer();
 	if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
 
 	SetFullRagdoll(false);
@@ -802,12 +841,12 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAction("StandUp", IE_Pressed, this, &AParkourGameCharacter::StandUp);
 
 	// TEMP DISABLED -- for physical animation
-	PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
-	PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
-	PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
-	PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
-	PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
-	PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
+	//PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
+	//PlayerInputComponent->BindAction("RagdollArmL", IE_Pressed, this, &AParkourGameCharacter::RagdollArmL);
+	//PlayerInputComponent->BindAction("RagdollLegR", IE_Pressed, this, &AParkourGameCharacter::RagdollLegR);
+	//PlayerInputComponent->BindAction("RagdollLegL", IE_Pressed, this, &AParkourGameCharacter::RagdollLegL);
+	//PlayerInputComponent->BindAction("RagdollTorso", IE_Pressed, this, &AParkourGameCharacter::RagdollTorso);
+	//PlayerInputComponent->BindAction("RagdollLegs", IE_Pressed, this, &AParkourGameCharacter::RagdollLegs);
 
 	//bindings for minigames
 	PlayerInputComponent->BindAction(FParkourFNames::Input_JoinGame, IE_Pressed, this, &AParkourGameCharacter::JoinMinigame);

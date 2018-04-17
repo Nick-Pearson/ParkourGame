@@ -247,6 +247,10 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   float BallPickupDistance = 200.0f;
 
+  // time a player can be AFK before they are automatically logged out
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
+  float AFKLogoutTime = 120.0f;
+
 	//EVENTS
 
 	UPROPERTY(BlueprintAssignable, Category = "ParkourGameCharacter|Events")
@@ -326,9 +330,13 @@ protected:
 
   UFUNCTION()
   void OnRagdollEvent();
-
+  
 //	void BeginPush(EHandSideEnum Hand);
 //	void EndPush(EHandSideEnum Hand);
+
+  void ResetAFKTimer();
+  void LogoutPlayer();
+  FTimerHandle AFKTimerHandle;
 
 	void StandUp();
 
@@ -336,7 +344,7 @@ protected:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Minigame")
-	void JoinMinigame() { Server_JoinMinigame(); }
+	void JoinMinigame() { ResetAFKTimer(); Server_JoinMinigame(); }
 
 	/**
 	* Returns position to direct a given hand with IK
