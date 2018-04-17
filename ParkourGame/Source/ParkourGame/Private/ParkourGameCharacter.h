@@ -307,6 +307,14 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isRolling = false;
 
+	void Flip();
+
+	UPROPERTY(BlueprintReadOnly, Category = "Physics")
+	bool isFlipping = false;
+
+	class UInputComponent* playerinputcomponent_copy;
+	void testfunction(float);
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
 

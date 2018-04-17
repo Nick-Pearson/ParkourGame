@@ -333,6 +333,11 @@ void AParkourGameCharacter::Jump()
 	Super::Jump();
 }
 
+void AParkourGameCharacter::testfunction(float x) {
+	//UE_LOG(LogTemp, Warning, TEXT("it works"));
+}
+
+
 void AParkourGameCharacter::Roll_Start() {
 	static bool initialised;
 	UCapsuleComponent* capsule = GetCapsuleComponent();
@@ -343,6 +348,7 @@ void AParkourGameCharacter::Roll_Start() {
 		initialised = true;
 	}
 	if (!isRolling) {
+		playerinputcomponent_copy->BindAxis("MoveForward", this, &AParkourGameCharacter::testfunction);
 		isRolling = !isRolling;
 		capsule->SetCapsuleSize(OutRadius * 2,  OutRadius * 2, true);
 		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 80));
@@ -351,6 +357,17 @@ void AParkourGameCharacter::Roll_Start() {
 		isRolling = !isRolling;
 		capsule->SetCapsuleSize(OutRadius, OutHalfHeight, true);
 	}
+}
+
+void AParkourGameCharacter::Flip() {
+	UE_LOG(LogTemp, Warning, TEXT("flipping is: %f"), Time_to_Floor());
+	if (Time_to_Floor() != 0) return;
+	if (!isFlipping)
+		isFlipping = true;
+	else
+		isFlipping = false;
+	UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
+	Roll_Start();
 }
 
 // use this function to calculate how fast the ball should rotate
@@ -641,6 +658,7 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 		PlayerInputComponent->AddActionBinding(AB); \
 	}
 
+	playerinputcomponent_copy = PlayerInputComponent;
 	// Set up gameplay key bindings
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AParkourGameCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
@@ -683,6 +701,9 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 
 	//Roll controls
 	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &AParkourGameCharacter::Roll_Start);
+
+	//Flip controls
+	PlayerInputComponent->BindAction("Flip", IE_Pressed, this, &AParkourGameCharacter::Flip);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
