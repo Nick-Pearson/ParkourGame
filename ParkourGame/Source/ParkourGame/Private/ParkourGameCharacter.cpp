@@ -310,6 +310,11 @@ void AParkourGameCharacter::ResetStandupAnim()
 void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+  FParkourTarget Targ;
+  GetParkourTarget(EHandSideEnum::HS_Left, Targ);
+  GetParkourTarget(EHandSideEnum::HS_Right, Targ);
+
 	CapsuleToRagdoll();
 
 	// tick the physics as often as is specified
@@ -438,17 +443,16 @@ FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
 
 bool AParkourGameCharacter::GetParkourTarget(EHandSideEnum HandSide, FParkourTarget& Target)
 {
-  FVector HandPos;
+  FVector Offset = GetActorRightVector() * 30.0f;
+  
   if (HandSide == EHandSideEnum::HS_Left)
   {
-    HandPos = GetMesh()->GetSocketLocation("Hand_lSocket");
-  }
-  else
-  {
-    HandPos = GetMesh()->GetSocketLocation("Hand_rSocket");
+    Offset *= -1;
   }
 
-  return GetParkourTargetClosestTo(HandPos, Target);
+  Offset += GetActorForwardVector() * -20.0f;
+
+  return GetParkourTargetClosestTo(GetActorLocation() + Offset, Target);
 }
 
 void AParkourGameCharacter::TurnAtRate(float Rate)
@@ -525,27 +529,25 @@ void AParkourGameCharacter::EndGrip(EHandSideEnum Hand)
 
 void AParkourGameCharacter::GetVisualTargets(const FVector& Start, TArray<FHitResult>& outVisualHits) const
 {
-	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
-
-	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
-
 	FCollisionQueryParams TraceParams(FName(TEXT("Hand Trace")), true, this);
 
-  const int32 numSteps = 12;
+  const int32 numSteps = 24;
   outVisualHits.Empty(numSteps);
 
-	for (int i = 0; i < numSteps; i++) {
-    const float stepSize = 8.f;
+	for (int i = 0; i < numSteps; i++)
+  {
+    const float stepSize = 8.0f;
 		float r = i * stepSize;
 		FHitResult Hit(ForceInit);
 		const FVector Rot = GetActorRotation().Add(0.5f * numSteps * stepSize, 0.f, 0.f).Add(-r, 0.f, 0.f).Vector();
 		const FVector End = Start + Rot * 2048;
 
-		GetWorld()->LineTraceSingleByObjectType(
+		GetWorld()->LineTraceSingleByChannel(
 			Hit,
 			Start,
 			End,
-			FCollisionObjectQueryParams(TraceObjectTypes)
+      ECollisionChannel::ECC_WorldStatic,
+      TraceParams
 		);
     
     //DrawDebugLine(GetWorld(), Start, End, FColor::Red);
@@ -694,7 +696,7 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 	FParkourTarget Target;
 	if (!GetParkourTarget(Hand, Target)) return;
 
-	FVector pathToActor = Target.GripTarget - GetSkeletalMesh()->GetBoneLocation(FParkourFNames::Bone_Neck);
+	FVector pathToActor = Target.GripTarget - GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Hand_L : FParkourFNames::Bone_Hand_R);
 	float DistSqrd = pathToActor.SizeSquared();
 
 	if (DistSqrd > FMath::Square(150.0f))
