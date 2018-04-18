@@ -942,9 +942,11 @@ void AParkourGameCharacter::SetRagdollOnBodyPart_Implementation(EBodyPart Part, 
 	OnRep_RagdollState();
 }
 
-bool AParkourGameCharacter::SetFullRagdoll_Validate(bool bIsFullRagdoll) { return true; }
-void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll)
+bool AParkourGameCharacter::SetFullRagdoll_Validate(bool bIsFullRagdoll, bool bFromSlide) { return true; }
+void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll, bool bFromSlide)
 {
+	
+	bWasSliding = bFromSlide;
 	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
 	OnRep_RagdollState();
 	OnRagdoll.Broadcast();
@@ -1184,9 +1186,15 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 {
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
+		//handle capsule position differently if sliding, for the camera's sake
+		FVector offset = FVector(0.0, 0.0, 0.0);
+		if (bWasSliding) {
+			offset = FVector(0.0, 0.0, 97.0);
+		}
+
 		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		Capsule->SetWorldLocation(SocketLocation);
+		Capsule->SetWorldLocation(SocketLocation + offset);
 	}
 }
 

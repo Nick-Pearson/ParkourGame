@@ -402,7 +402,7 @@ public:
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
 
 	UFUNCTION(BlueprintCallable, Category = "Physics", Server, Reliable, WithValidation)
-	void SetFullRagdoll(bool bIsFullRagdoll);
+	void SetFullRagdoll(bool bIsFullRagdoll, bool bFromSlide = false);
 
 	UFUNCTION(BlueprintPure, Category = "Physics")
 	bool IsFullRagdoll() const;
@@ -432,6 +432,7 @@ public:
   UFUNCTION()
   void OnGameOver(AMiniGameBase* Game, EMiniGameEndReason Reason);
   
+  UFUNCTION(BlueprintCallable, Category = "CharacterState")
   void EnableJumping(bool Enable = true);
 
 private:
@@ -483,5 +484,6 @@ private:
 	class AParkourPlayerState* ParkourPlayerState;
 
   bool bCanJump = true;
+  bool bWasSliding = false;
 };
 
