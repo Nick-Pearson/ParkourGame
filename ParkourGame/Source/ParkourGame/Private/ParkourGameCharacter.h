@@ -300,14 +300,13 @@ public:
 	float Time_to_Floor() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Physics")
-	void Tick_Roll(FVector& velocity, float DeltaSeconds);
+	void Tick_Roll(float DeltaSeconds);
 
+	UFUNCTION(BlueprintCallable, Category = "Physics")
 	void Roll_Start();
 
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isRolling = false;
-
-	void Flip();
 
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isFlipping = false;

@@ -244,8 +244,7 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	CapsuleToRagdoll();
 	if (isRolling) {
-		FVector velocity = GetVelocity();
-		Tick_Roll(velocity, DeltaSeconds);
+		Tick_Roll(DeltaSeconds);
 	}
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
@@ -339,6 +338,14 @@ void AParkourGameCharacter::testfunction(float x) {
 
 
 void AParkourGameCharacter::Roll_Start() {
+	// this part is the flip
+	// TODO add a check for distance from floor so you can roll on ramps
+	if (GetVelocity().Z != 0.0f && !isFlipping && !isRolling) {
+		isFlipping = true;
+		UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
+		return;
+	}
+	// and this is the standard roll
 	static bool initialised;
 	UCapsuleComponent* capsule = GetCapsuleComponent();
 	static float OutRadius;
@@ -350,7 +357,7 @@ void AParkourGameCharacter::Roll_Start() {
 	if (!isRolling) {
 		playerinputcomponent_copy->BindAxis("MoveForward", this, &AParkourGameCharacter::testfunction);
 		isRolling = !isRolling;
-		capsule->SetCapsuleSize(OutRadius * 2,  OutRadius * 2, true);
+		capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
 		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 80));
 	}
 	else {
@@ -359,20 +366,11 @@ void AParkourGameCharacter::Roll_Start() {
 	}
 }
 
-void AParkourGameCharacter::Flip() {
-	UE_LOG(LogTemp, Warning, TEXT("flipping is: %f"), Time_to_Floor());
-	if (Time_to_Floor() != 0) return;
-	if (!isFlipping)
-		isFlipping = true;
-	else
-		isFlipping = false;
-	UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
-	Roll_Start();
-}
 
 // use this function to calculate how fast the ball should rotate
-void AParkourGameCharacter::Tick_Roll(FVector& velocity, float DeltaSeconds)
+void AParkourGameCharacter::Tick_Roll(float DeltaSeconds)
 {
+	FVector velocity = GetVelocity();
 	static bool initialised;
 	UCapsuleComponent* capsule = GetCapsuleComponent();
 	static float OutRadius;
@@ -387,7 +385,7 @@ void AParkourGameCharacter::Tick_Roll(FVector& velocity, float DeltaSeconds)
 	rotator = mesh->GetRelativeTransform().Rotator();
 
 
-	float delta_rotation = velocity.Size() * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
+	float delta_rotation = sqrt(pow(velocity.X, 2) + pow(velocity.Y, 2)) * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
 	//UE_LOG(LogTemp, Warning, TEXT("x velocity rotation should be: %f"), velocity.X);
 	rotator = rotator.Add(0, 0, delta_rotation);
 	mesh->SetRelativeRotation(rotator);
@@ -699,11 +697,8 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Left);
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);
 
-	//Roll controls
+	//Roll and flip controls
 	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &AParkourGameCharacter::Roll_Start);
-
-	//Flip controls
-	PlayerInputComponent->BindAction("Flip", IE_Pressed, this, &AParkourGameCharacter::Flip);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
