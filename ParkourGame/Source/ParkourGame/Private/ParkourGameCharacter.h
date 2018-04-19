@@ -96,6 +96,8 @@ public:
 	FVector VaultTarget;
 };
 
+class ABallBase;
+
 USTRUCT(BlueprintType)
 struct FGripData
 {
@@ -107,7 +109,7 @@ public:
 	bool isGripping;
 
   UPROPERTY(BlueprintReadOnly, Category = "GripData")
-  TWeakObjectPtr<AActor> HeldBall;
+  TWeakObjectPtr<ABallBase> HeldBall;
 
   UPROPERTY(BlueprintReadOnly, Category = "GripData", NotReplicated)
   TWeakObjectPtr<AActor> PreviousHeldBall;
@@ -249,7 +251,7 @@ public:
   class UMaterialInterface* DefaultMaterial;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
-  TSubclassOf<AActor> BallClass;
+  TSubclassOf<ABallBase> BallClass;
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   float BallPickupDistance = 200.0f;
 
@@ -333,6 +335,9 @@ protected:
 
   UFUNCTION(BlueprintImplementableEvent)
   void DropBall(AActor* Ball, EHandSideEnum Hand);
+
+  UFUNCTION(BlueprintPure, Category = "BallHandling")
+  bool HasBall() const;
 
   UFUNCTION()
   void OnRagdollEvent();

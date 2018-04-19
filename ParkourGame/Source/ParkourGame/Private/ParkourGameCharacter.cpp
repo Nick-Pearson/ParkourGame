@@ -4,6 +4,7 @@
 #include "Physics/ReverseSweep.h"
 #include "ParkourInteractiveZone.h"
 #include "MiniGame/MiniGameManager.h"
+#include "MiniGame/BallBase.h"
 #include "Utils/ParkourFNames.h"
 #include "Utils/SingletonHelper.h"
 #include "Utils/ParkourHelperLibrary.h"
@@ -11,8 +12,8 @@
 #include "Physics/ConstraintManager.h"
 #include "Physics/SimpleSpringSystem.h"
 #include "Physics/SpringSystem.h"
-#include "Networking/ParkourPlayerState.h"
 #include "Physics/PushSpringSystem.h"
+#include "Networking/ParkourPlayerState.h"
 #include "Audio/FootstepAudioTableRow.h"
 #include "Spectator/ParkourSpectator.h"
 #include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
@@ -34,7 +35,6 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "EngineUtils.h"
 
-#include <cmath>
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
 
@@ -758,6 +758,8 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
   // if we grab a ball then we are done
   if (Server_GrabNearbyBall(Hand))
     return;
+  else if (Server_DropBall(Hand))
+    return;
 	
 	FParkourTarget Target;
 	if (!GetParkourTarget(Hand, Target)) return;
@@ -790,10 +792,7 @@ bool AParkourGameCharacter::Server_EndGrip_Validate(EHandSideEnum Hand) { return
 void AParkourGameCharacter::Server_EndGrip_Implementation(EHandSideEnum Hand)
 {
 	if (Hand == EHandSideEnum::MAX) return;
-
-  if (Server_DropBall(Hand))
-    return;
-
+  
 	m_GripData[(int32)Hand].isGripping = false;
 	if (m_VaultData[(int32)Hand].isVaulting) {
 		m_VaultData[(int32)Hand].isVaulting = false;
@@ -808,14 +807,17 @@ bool AParkourGameCharacter::Server_GrabNearbyBall(EHandSideEnum Hand)
 
   if (m_GripData[(int32)Hand].HeldBall.IsValid()) return false;
 
-  AActor* ClosestBall = nullptr;
+  ABallBase* ClosestBall = nullptr;
   float ClosestBallDist_sqrd = 0.0f;
 
   FVector Position = GetActorLocation();
 
-  for (TActorIterator<AActor> It(GetWorld(), BallClass); It; ++It)
+  for (TActorIterator<ABallBase> It(GetWorld(), BallClass); It; ++It)
   {
     float Dist_sqrd = ((*It)->GetActorLocation() - Position).SizeSquared();
+
+    if((*It)->GetHeldBy() != nullptr)
+      continue;
 
     if (!ClosestBall || Dist_sqrd < ClosestBallDist_sqrd)
     {
@@ -828,6 +830,7 @@ bool AParkourGameCharacter::Server_GrabNearbyBall(EHandSideEnum Hand)
   if (ClosestBallDist_sqrd > FMath::Square(BallPickupDistance)) return false;
 
   m_GripData[(int32)Hand].HeldBall = ClosestBall;
+  ClosestBall->SetHeldBy(this);
 
   OnRep_GripData();
   return true;
@@ -836,11 +839,24 @@ bool AParkourGameCharacter::Server_GrabNearbyBall(EHandSideEnum Hand)
 bool AParkourGameCharacter::Server_DropBall(EHandSideEnum Hand)
 {
   if (!HasAuthority()) return false;
-  if (!m_GripData[(int32)Hand].HeldBall.IsValid()) return false;
+
+  ABallBase* HeldBallptr = m_GripData[(int32)Hand].HeldBall.Get();
+  if (!HeldBallptr) return false;
 
   m_GripData[(int32)Hand].HeldBall.Reset();
+  HeldBallptr->SetHeldBy(nullptr);
   OnRep_GripData();
   return true;
+}
+
+bool AParkourGameCharacter::HasBall() const
+{
+  for (int32 i = 0; i < (int32)EHandSideEnum::MAX; ++i)
+  {
+    if (m_GripData[i].HeldBall.IsValid()) return true;
+  }
+
+  return false;
 }
 
 void AParkourGameCharacter::OnRagdollEvent()
