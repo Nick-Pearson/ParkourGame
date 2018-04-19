@@ -15,6 +15,7 @@
 #include "Physics/PushSpringSystem.h"
 #include "Audio/FootstepAudioTableRow.h"
 #include "Spectator/ParkourSpectator.h"
+#include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
@@ -1179,6 +1180,11 @@ void AParkourGameCharacter::OnRep_StandUpAnimRow()
 {
   if (StandUpAnimRow == NAME_None) return;
 
+  USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+  FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
+  UCapsuleComponent* Capsule = GetCapsuleComponent();
+  Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, .0));
+
   PlayStandUpAnimation();
 }
 
@@ -1186,15 +1192,51 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 {
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0) {
-		//handle capsule position differently if sliding, for the camera's sake
-		FVector offset = FVector(0.0, 0.0, 0.0);
-		if (bWasSliding) {
-			offset = FVector(0.0, 0.0, 97.0);
-		}
-
 		FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		Capsule->SetWorldLocation(SocketLocation + offset);
+
+		FHitResult OutHit;
+		FVector Start = (Capsule->GetComponentLocation());
+
+		FVector DownVector = (Capsule->GetUpVector()) * -1;
+		FVector End = ((DownVector * 1000.f) + Start);
+		FCollisionQueryParams CollisionParams;
+
+		bool bFoundFloor;
+		bFoundFloor = GetWorld()->LineTraceSingleByChannel(
+			OutHit,        //result
+			Start,    //start
+			End, //end
+			ECC_Pawn, //collision channel
+			CollisionParams
+		);
+
+		if (bFoundFloor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Floor found"));
+			FVector FloorLocation = OutHit.Actor->GetActorLocation(); //this needs to be the topmost collision bound
+			UE_LOG(LogTemp, Warning, TEXT("distance to floor is %f"), OutHit.Distance);
+
+			UE_LOG(LogTemp, Warning, TEXT("floors FName is %s"),
+				*OutHit.Actor->GetFName().ToString());
+			if ((OutHit.Distance >= 90.0))
+			{
+				//handle capsule position differently if sliding, for the camera's sake
+				if (bWasSliding) {
+					Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, 88.0));
+				}
+				else {
+					Capsule->SetWorldLocation(SocketLocation);
+				}
+			}
+			else
+			{
+				Capsule->SetWorldLocation(FVector(SocketLocation.X, SocketLocation.Y, OutHit.ImpactPoint.Z +88.0));
+			}
+		}
+		else {
+			Capsule->SetWorldLocation(SocketLocation);
+		}
 	}
 }
 
