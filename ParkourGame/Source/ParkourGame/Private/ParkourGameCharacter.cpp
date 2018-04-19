@@ -34,6 +34,7 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "EngineUtils.h"
 
+#include <cmath>
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
 
@@ -42,7 +43,7 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-
+	
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
@@ -116,7 +117,8 @@ void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherA
 void AParkourGameCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
+	GetCapsuleComponent()->SetVisibility(true);
+	GetCapsuleComponent()->SetHiddenInGame(false);
 	EnablePhysicalAnimation();
   ResetAFKTimer();
 
@@ -317,7 +319,9 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
   GetParkourTarget(EHandSideEnum::HS_Right, Targ);
 
 	CapsuleToRagdoll();
-
+	if (isRolling) {
+		Tick_Roll(DeltaSeconds);
+	}
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
 	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
@@ -352,6 +356,8 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 
 	if (PlayerNameTag)
 		PlayerNameTag->SetWorldRotation(FQuat::Identity);
+
+	
 }
 
 
@@ -412,8 +418,67 @@ void AParkourGameCharacter::Jump()
 
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0 || !bCanJump)
 		return;
-
 	Super::Jump();
+}
+
+void AParkourGameCharacter::testfunction(float x) {
+	//UE_LOG(LogTemp, Warning, TEXT("it works"));
+}
+
+
+void AParkourGameCharacter::Roll_Start() {
+	// this part is the flip
+	// TODO add a check for distance from floor so you can roll on ramps
+	if (GetVelocity().Z != 0.0f && !isFlipping && !isRolling) {
+		isFlipping = true;
+		UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
+		return;
+	}
+	// and this is the standard roll
+	static bool initialised;
+	UCapsuleComponent* capsule = GetCapsuleComponent();
+	static float OutRadius;
+	static float OutHalfHeight;
+	if (!initialised) {
+		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
+		initialised = true;
+	}
+	if (!isRolling) {
+		playerinputcomponent_copy->BindAxis("MoveForward", this, &AParkourGameCharacter::testfunction);
+		isRolling = !isRolling;
+		capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
+		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 80));
+	}
+	else {
+		isRolling = !isRolling;
+		capsule->SetCapsuleSize(OutRadius, OutHalfHeight, true);
+	}
+}
+
+
+// use this function to calculate how fast the ball should rotate
+void AParkourGameCharacter::Tick_Roll(float DeltaSeconds)
+{
+	FVector velocity = GetVelocity();
+	static bool initialised;
+	UCapsuleComponent* capsule = GetCapsuleComponent();
+	static float OutRadius;
+	static float OutHalfHeight;
+	if (!initialised) {
+		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
+		initialised = true;
+	}
+	USkeletalMeshComponent* mesh = GetSkeletalMesh();
+
+	static FRotator rotator;
+	rotator = mesh->GetRelativeTransform().Rotator();
+
+
+	float delta_rotation = sqrt(pow(velocity.X, 2) + pow(velocity.Y, 2)) * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
+	//UE_LOG(LogTemp, Warning, TEXT("x velocity rotation should be: %f"), velocity.X);
+	rotator = rotator.Add(0, 0, delta_rotation);
+	mesh->SetRelativeRotation(rotator);
+	//SetActorRotation(rotator);
 }
 
 FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
@@ -655,7 +720,7 @@ bool AParkourGameCharacter::GetParkourTargetClosestTo(const FVector& Location, F
 	if (Hand == EHandSideEnum::MAX)
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("Your message"));
+	//UE_LOG(LogTemp, Warning, TEXT("Your message"));
 
 	FPushData& Data = m_PushData[(int32)Hand];
 
@@ -679,7 +744,7 @@ void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
 	float force = m_PushData[(int32)Hand].ArmSpring->GetSpringForce();
 	LaunchCharacter(GetControlRotation().Vector() * force, false, false);
 	UE_LOG(LogTemp, Warning, TEXT("Your springforce is %s"), *FString::SanitizeFloat(force));
-	
+
 	m_PushData[(int32)Hand].isPushing = false;
 }*/
 
@@ -820,7 +885,6 @@ void AParkourGameCharacter::StandUp()
 void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	check(PlayerInputComponent);
-
 	// helper macro that allows us to pass payload arguments through to input functions
 #define BIND_ACTION_CUSTOMEVENT(ActionName, KeyEvent, Func, ...) \
 	{ \
@@ -829,6 +893,7 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 		PlayerInputComponent->AddActionBinding(AB); \
 	}
 
+	playerinputcomponent_copy = PlayerInputComponent;
 	// Set up gameplay key bindings
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AParkourGameCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
@@ -868,6 +933,9 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("PushR", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Right);
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Pressed, &AParkourGameCharacter::BeginPush, EHandSideEnum::HS_Left);
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);*/
+
+	//Roll and flip controls
+	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &AParkourGameCharacter::Roll_Start);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
@@ -1073,15 +1141,16 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
 	{
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
 		EnablePhysicalAnimation(false);
 		PlayerMesh->ResetAllBodiesSimulatePhysics();
 		GetParkourMovementComp()->SetMovementMode(MOVE_None);
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		PlayerMesh->SetSimulatePhysics(true);
 		return;
 	}
 	else
-	{
+	{	
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
 
     // calculate the facing of the ragdoll and the direction so the standing capsule can match
@@ -1105,7 +1174,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		PlayerMesh->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -90.0), FRotator(0.0, 270.0, 0.0), false, (FHitResult *)nullptr, ETeleportType::None);
 		GetParkourMovementComp()->SetMovementMode(MOVE_Walking);
     Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		EnablePhysicalAnimation();
+		EnablePhysicalAnimation(true);
 
     if (HasAuthority())
     {
