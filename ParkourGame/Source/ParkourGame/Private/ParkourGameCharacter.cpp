@@ -34,6 +34,7 @@
 #include "AudioDevice.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "EngineUtils.h"
+#include "AI/Navigation/NavigationSystem.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -117,8 +118,16 @@ void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherA
 void AParkourGameCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	GetCapsuleComponent()->SetVisibility(true);
-	GetCapsuleComponent()->SetHiddenInGame(false);
+
+#if WITH_EDITOR
+  // DEBUG OPTIONS FOR SHOWING THE CAPSULE
+  // Set to false to view the capsule at all times
+	GetCapsuleComponent()->SetHiddenInGame(true);
+#else
+  // DO NOT TOUCH THIS, modify the code above instead
+  GetCapsuleComponent()->SetHiddenInGame(true);
+#endif
+
 	EnablePhysicalAnimation();
   ResetAFKTimer();
 
@@ -892,7 +901,8 @@ void AParkourGameCharacter::StandUp()
   ResetAFKTimer();
 	if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
 
-	SetFullRagdoll(false);
+  FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
+  Server_StandUp(SocketLocation);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1035,6 +1045,29 @@ void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll, b
 	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
 	OnRep_RagdollState();
 	OnRagdoll.Broadcast();
+}
+
+bool AParkourGameCharacter::Server_StandUp_Validate(FVector ClientSideLocation)
+{
+  return true;
+}
+
+void AParkourGameCharacter::Server_StandUp_Implementation(FVector ClientSideLocation)
+{
+  SetFullRagdoll(false);
+
+  FVector AdjustedLocation = ClientSideLocation;
+
+  if (UNavigationSystem* Nav = GetWorld()->GetNavigationSystem())
+  {
+    FNavLocation outLoc;
+    if (Nav->ProjectPointToNavigation(ClientSideLocation, outLoc))
+    {
+      AdjustedLocation = outLoc.Location + (GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * FVector::UpVector);
+    }
+  }
+
+  GetCapsuleComponent()->SetWorldLocation(AdjustedLocation);
 }
 
 bool AParkourGameCharacter::IsFullRagdoll() const

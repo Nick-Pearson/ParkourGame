@@ -412,6 +412,10 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
 
+
+  UFUNCTION(Server, Reliable, WithValidation)
+  void Server_StandUp(FVector ClientSideLocation);
+
 	UFUNCTION(BlueprintCallable, Category = "Physics", Server, Reliable, WithValidation)
 	void SetFullRagdoll(bool bIsFullRagdoll, bool bFromSlide = false);
 
