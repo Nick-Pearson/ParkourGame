@@ -44,6 +44,10 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FMiniGameTeamUIInfo")
   UMaterialInterface* PlayerMaterial;
 
+  // Material used on players
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FMiniGameTeamUIInfo")
+  UMaterialInterface* HatMaterial;
+
 };
 
 USTRUCT(BlueprintType)

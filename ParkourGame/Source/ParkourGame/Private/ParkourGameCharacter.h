@@ -199,6 +199,9 @@ class AParkourGameCharacter : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, Category = "Physics", meta = (AllowPrivateAccess = "true"))
 	FVector2D RollMagnitude;
+
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display", meta = (AllowPrivateAccess = "true"))
+  class UStaticMeshComponent* Hat;
 	
 
 
@@ -249,6 +252,9 @@ public:
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   class UMaterialInterface* DefaultMaterial;
+  
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
+  class UMaterialInterface* DefaultHatMaterial;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   TSubclassOf<ABallBase> BallClass;
@@ -411,6 +417,8 @@ public:
 	FORCEINLINE UParkourMovementComponent* GetParkourMovementComp() const { return MovementComp; }
 
 	FORCEINLINE UTextRenderComponent* GetPlayerNameTag() const { return PlayerNameTag; }
+
+  FORCEINLINE UStaticMeshComponent* GetHat() const { return Hat; }
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);

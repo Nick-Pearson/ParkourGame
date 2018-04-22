@@ -24,6 +24,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -100,6 +101,10 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
 
 	PlayerNameTag = CreateDefaultSubobject<UTextRenderComponent>(TEXT("PlayerName"));
 	PlayerNameTag->SetupAttachment(RootComponent);
+
+  Hat = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Hat"));
+  Hat->SetupAttachment(SkelMesh, FParkourFNames::Bone_Head);
+  Hat->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SingletonHelper = MakeShareable(new FSingletonHelper);
 }
@@ -1169,6 +1174,8 @@ void AParkourGameCharacter::SetVisibleInXRay(bool ShouldBeVisible)
 
 	GetSkeletalMesh()->SetRenderCustomDepth(ShouldBeVisible);
 	GetSkeletalMesh()->SetCustomDepthStencilValue(ShouldBeVisible ? 255 : 0);
+  Hat->SetRenderCustomDepth(ShouldBeVisible);
+  Hat->SetCustomDepthStencilValue(ShouldBeVisible ? 255 : 0);
 }
 
 void AParkourGameCharacter::OnJoinedTeam(AMiniGameBase* Game, AParkourGameCharacter* Player, int32 TeamID)
@@ -1182,12 +1189,17 @@ void AParkourGameCharacter::OnJoinedTeam(AMiniGameBase* Game, AParkourGameCharac
   {
     GetSkeletalMesh()->SetMaterial(0, Info.PlayerMaterial);
   }
+
+  if (Info.HatMaterial)
+  {
+    Hat->SetMaterial(0, Info.HatMaterial);
+  }
 }
 
 void AParkourGameCharacter::OnGameOver(AMiniGameBase* Game, EMiniGameEndReason Reason)
 {
-
   GetSkeletalMesh()->SetMaterial(0, DefaultMaterial);
+  Hat->SetMaterial(0, DefaultHatMaterial);
 }
 
 /*
