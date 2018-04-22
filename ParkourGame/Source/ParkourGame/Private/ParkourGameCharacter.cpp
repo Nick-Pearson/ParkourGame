@@ -423,10 +423,20 @@ void AParkourGameCharacter::MoveRight(float Value)
 
 void AParkourGameCharacter::Jump()
 {
-  ResetAFKTimer();
+	ResetAFKTimer();
 
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0 || !bCanJump)
 		return;
+
+	if (m_GripData[(int32)EHandSideEnum::HS_Left].isGripping) { 
+		Server_Vault(EHandSideEnum::HS_Left);
+		return;
+	}
+	else if (m_GripData[(int32)EHandSideEnum::HS_Right].isGripping) {
+		Server_Vault(EHandSideEnum::HS_Right);
+		return;
+	}
+
 	Super::Jump();
 }
 
@@ -621,11 +631,11 @@ void AParkourGameCharacter::GetVisualTargets(const FVector& Start, TArray<FHitRe
 			Hit,
 			Start,
 			End,
-      ECollisionChannel::ECC_WorldStatic,
-      TraceParams
+			ECollisionChannel::ECC_WorldStatic,
+			TraceParams
 		);
-    
-    //DrawDebugLine(GetWorld(), Start, End, FColor::Red);
+
+		//DrawDebugLine(GetWorld(), Start, End, FColor::Red);
 
 		if (!Hit.GetActor())
       continue;
@@ -677,7 +687,7 @@ void AParkourGameCharacter::GetParkourTargets(TArray<FParkourTarget>& outPTargs,
 			ECollisionChannel::ECC_GameTraceChannel1,
 			FCollisionQueryParams::DefaultQueryParam,
 			FCollisionResponseParams::DefaultResponseParam
-		);
+		); 
 
 		FVector vaultEnd = gripTarget + GeomReverseSweep(
 			GetWorld(), HandCol, FQuat(rot),
@@ -687,6 +697,17 @@ void AParkourGameCharacter::GetParkourTargets(TArray<FParkourTarget>& outPTargs,
 			FCollisionQueryParams::DefaultQueryParam,
 			FCollisionResponseParams::DefaultResponseParam
 		);
+
+		/*DrawDebugCapsule(
+			GetWorld(),
+			vaultEnd,
+			25.f,
+			5.f,
+			FQuat(rot),
+			FColor(255, 0, 0),
+			true,
+			4.f
+		);*/
 
     FParkourTarget PTarg;
     PTarg.Target = location;
@@ -757,6 +778,32 @@ void AParkourGameCharacter::EndPush(EHandSideEnum Hand)
 	m_PushData[(int32)Hand].isPushing = false;
 }*/
 
+bool AParkourGameCharacter::Server_Vault_Validate(EHandSideEnum Hand) { return true; }
+
+void AParkourGameCharacter::Server_Vault_Implementation(EHandSideEnum Hand)
+{
+	if (Hand == EHandSideEnum::MAX)
+		return;
+
+	//GetCharacterMovement()->Velocity = (facing.Vector() * 100);
+	Server_EndGrip(EHandSideEnum::HS_Left);
+	Server_EndGrip(EHandSideEnum::HS_Right);
+	OnRep_Vault(Hand);
+}
+
+void AParkourGameCharacter::OnRep_Vault(EHandSideEnum Hand) {
+	FGripData& Data = m_GripData[(int32)Hand];
+
+	FVector pathToActor = Data.gripTarget - GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Hand_L : FParkourFNames::Bone_Hand_R);
+	float DistSqrd = 2.5 * pathToActor.Size();
+	FRotator facing = GetControlRotation();
+
+	facing.SetComponentForAxis(EAxis::Y, 0.f);
+	FLatentActionInfo LatentInfo;
+	LatentInfo.CallbackTarget = this;
+	UKismetSystemLibrary::MoveComponentTo(RootComponent, RootComponent->GetComponentLocation() + (DistSqrd * FVector::UpVector) + (facing.Vector() * 50), FRotator(0.0f, 0.0f, 0.0f), false, false, 0.5f, false, EMoveComponentAction::Type::Move, LatentInfo);
+}
+
 bool AParkourGameCharacter::Server_BeginGrip_Validate(EHandSideEnum Hand) { return true; }
 
 void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
@@ -786,13 +833,6 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 		Data.gripTarget = Target.GripTarget;
 		Data.isGripping = true;
 		OnRep_GripData();
-	} else {
-		//VAULT
-		FVaultData& Data = m_VaultData[(int32)Hand];
-
-		Data.vaultTarget = Target.GripTarget;
-		Data.isVaulting = true;
-		OnRep_VaultData();
 	}
 }
 
