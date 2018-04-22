@@ -319,6 +319,9 @@ protected:
 	void EndGrip(EHandSideEnum Hand);
 
 	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_Vault(EHandSideEnum Hand);
+
+	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_BeginGrip(EHandSideEnum Hand);
 
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -480,6 +483,10 @@ private:
 
 	void EnablePhysicalAnimation(bool Enable = true);
 
+	// Function called when the client recieves an update to the ragdoll state
+	UFUNCTION()
+	void OnRep_Vault(EHandSideEnum Hand);
+	
 	// Function called when the client recieves an update to the ragdoll state
 	UFUNCTION()
 	void OnRep_RagdollState();
