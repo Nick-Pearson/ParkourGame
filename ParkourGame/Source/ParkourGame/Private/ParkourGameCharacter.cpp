@@ -1331,12 +1331,6 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 
 		if (bFoundFloor)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Floor found"));
-			FVector FloorLocation = OutHit.Actor->GetActorLocation(); //this needs to be the topmost collision bound
-			UE_LOG(LogTemp, Warning, TEXT("distance to floor is %f"), OutHit.Distance);
-
-			UE_LOG(LogTemp, Warning, TEXT("floors FName is %s"),
-				*OutHit.Actor->GetFName().ToString());
 			if ((OutHit.Distance >= 90.0))
 			{
 				//handle capsule position differently if sliding, for the camera's sake
