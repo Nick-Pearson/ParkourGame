@@ -19,7 +19,7 @@ static void cmd_CreateRandom(UWorld* World)
 }
 
 FAutoConsoleCommandWithWorld CreateGameCmd(
-	TEXT("Minigame.CreateRandom"),
+	TEXT("Parkour.StartGame"),
 	TEXT("Creates a random minigame to play if possible"),
 	FConsoleCommandWithWorldDelegate::CreateStatic(cmd_CreateRandom));
 
@@ -38,7 +38,7 @@ void AMiniGameManager::BeginPlay()
 	if(!HasAuthority())
 		OnGameOver.AddDynamic(this, &AMiniGameManager::OnGameEnded);
 
-	SetNextGameTimer();
+	//SetNextGameTimer();
 }
 
 void AMiniGameManager::CreateRandomGame()
@@ -50,7 +50,7 @@ void AMiniGameManager::CreateRandomGame()
 		CreateGame(AvailibleMiniGames[RandomIdx]);
 }
 
-void AMiniGameManager::CreateGame(TSubclassOf<AMiniGameBase>& GameClass)
+void AMiniGameManager::CreateGame(TSubclassOf<AMiniGameBase> GameClass)
 {
 	if (!HasAuthority() || GameClass.Get()->HasAnyClassFlags(CLASS_Abstract)) return;
 
@@ -177,26 +177,5 @@ void AMiniGameManager::OnGameEnded(AMiniGameBase* Game, EMiniGameEndReason Reaso
 		IToasterInterface::Execute_AddToasterMessage(Toaster,
 			MessageType,
 			{Game->DisplayName});
-	}
-}
-
-void AMiniGameManager::OnRep_ActiveGame()
-{
-	//show some UI if a new game is starting
-	if (ActiveGame && ActiveGame->GameState == EMiniGameState::Pending)
-	{
-		APlayerController* LocalPlayerController = UGameplayStatics::GetPlayerController(this, 0);
-		AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(LocalPlayerController ? LocalPlayerController->GetHUD() : nullptr);
-		UObject* Toaster = HUDptr ? HUDptr->GetToaster() : nullptr;
-
-		if (Toaster)
-		{
-			IToasterInterface::Execute_AddToasterMessage(Toaster,
-				TEXT("GameStarting"), 
-				{ 
-					ActiveGame->DisplayName, 
-					UUIHelperLibrary::GetDisplayStringForAction(this, FParkourFNames::Input_JoinGame) 
-				});
-		}
 	}
 }

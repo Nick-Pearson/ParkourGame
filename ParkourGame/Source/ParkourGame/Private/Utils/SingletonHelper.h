@@ -18,6 +18,11 @@ public:
 	FORCEINLINE T* GetSingletonObject(UWorld* WorldPtr) { return Cast<T>(GetSingletonObjectByClass(WorldPtr, T::StaticClass())); }
 
 	AActor* GetSingletonObjectByClass(UWorld* WorldPtr, UClass* Class);
+  
+  template<typename T>
+  static FORCEINLINE T* Static_GetSingletonObject(UWorld* WorldPtr) { return Cast<T>(Static_GetSingletonObjectByClass(WorldPtr, T::StaticClass())); }
+
+  static AActor* Static_GetSingletonObjectByClass(UWorld* WorldPtr, UClass* Class);
 
 private:
 	TMap<UClass*, TWeakObjectPtr<AActor>> ObjectPtrs;

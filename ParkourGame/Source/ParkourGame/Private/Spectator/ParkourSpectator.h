@@ -12,6 +12,8 @@ class AParkourSpectator : public ASpectatorPawn
 	GENERATED_BODY()
 
 public:
+  AParkourSpectator();
+
 	void BeginPlay() override;
 
 	void PossessedBy(class AController* NewController) override;
@@ -27,7 +29,16 @@ public:
 
 	void TargetRandomPlayer();
 
+  UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
+  void BeginAutoCam();
+
+  UFUNCTION(BlueprintCallable, Category = "ParkourSpectator", Server, Unreliable, WithValidation)
+  void StartGame(TSubclassOf<AMiniGameBase> GameClass);
+
+  void OpenControls();
+
 private:
+
 
 	void SwitchCamera();
 

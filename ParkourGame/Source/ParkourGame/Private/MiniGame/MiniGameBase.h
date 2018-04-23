@@ -175,7 +175,7 @@ public:
 	int32 NumTeams = 2;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
-	int32 NumPlayersPerTeam = 5;
+	int32 NumPlayersPerTeam = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
 	bool AutoStartWhenTeamsFull = true;
@@ -190,7 +190,7 @@ public:
 	int32 GameMaxLength = 300;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
-	bool AutoJoin = false;
+	bool AutoJoin = true;
 
 	UPROPERTY(BlueprintReadOnly, Category = "MiniGame")
 	FDateTime CountdownStartTime;

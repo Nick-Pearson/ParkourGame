@@ -16,6 +16,9 @@ public:
 
 	FORCEINLINE UObject* GetToaster() const { return Toaster.GetObject(); }
 
+  UFUNCTION(BlueprintImplementableEvent)
+  void OpenSpectatorUI(AParkourSpectator* Spectator);
+
 private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD", meta = (AllowPrivateAccess = "true"))

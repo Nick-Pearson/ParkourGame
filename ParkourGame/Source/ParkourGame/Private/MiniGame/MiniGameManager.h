@@ -25,10 +25,12 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 public:
-	
+
+  UFUNCTION(BlueprintCallable, Category = "MinigameManager")
 	void CreateRandomGame();
 
-	void CreateGame(TSubclassOf<AMiniGameBase>& GameClass);
+  UFUNCTION(BlueprintCallable, Category = "MinigameManager")
+	void CreateGame(TSubclassOf<AMiniGameBase> GameClass);
 
 	bool AddPlayerToGame(AParkourGameCharacter* Player);
 
@@ -88,10 +90,7 @@ private:
 	UFUNCTION()
 	void OnGameEnded(AMiniGameBase* Game, EMiniGameEndReason Reason);
 
-	UFUNCTION()
-	void OnRep_ActiveGame();
-
-	UPROPERTY(BlueprintReadOnly, Category = "MinigameManager", Transient, ReplicatedUsing = OnRep_ActiveGame, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "MinigameManager", Transient, Replicated, meta = (AllowPrivateAccess = "true"))
 	AMiniGameBase* ActiveGame;
 
 	FTimerHandle NextGameTimer;

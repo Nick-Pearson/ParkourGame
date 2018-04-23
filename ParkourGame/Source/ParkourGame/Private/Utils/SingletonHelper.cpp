@@ -25,22 +25,30 @@ AActor* FSingletonHelper::GetSingletonObjectByClass(UWorld* WorldPtr, UClass* Cl
 		if (AActor* ExistingObject = FoundObject->Get()) return ExistingObject;
 	}
 
-	if (!WorldPtr) return nullptr;
+  AActor* FoundActor = Static_GetSingletonObjectByClass(WorldPtr, Class);
+  if (FoundActor)
+    ObjectPtrs.Add(Class, FoundActor);
 
-	// otherwise try to find the object in the world
-	for (TActorIterator<AActor> It(WorldPtr, Class); It; ++It)
-	{
-		if (AActor* FoundActor = *It)
-		{
-			ObjectPtrs.Add(Class, FoundActor);
-			return FoundActor;
-		}
-	}
-
-	return nullptr;
+  return FoundActor;
 }
 
 
+
+AActor* FSingletonHelper::Static_GetSingletonObjectByClass(UWorld* WorldPtr, UClass* Class)
+{
+  if (!WorldPtr) return nullptr;
+
+  // otherwise try to find the object in the world
+  for (TActorIterator<AActor> It(WorldPtr, Class); It; ++It)
+  {
+    if (AActor* FoundActor = *It)
+    {
+      return FoundActor;
+    }
+  }
+
+  return nullptr;
+}
 
 class AMiniGameManager* USingletonHelperLibrary::GetMiniGameManager(UObject* WorldContextObject)
 {
