@@ -471,11 +471,17 @@ void AParkourGameCharacter::Roll_Start() {
 		playerinputcomponent_copy->BindAxis("MoveForward", this, &AParkourGameCharacter::testfunction);
 		isRolling = !isRolling;
 		capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
-		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 80));
+		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 40));
+		
 	}
 	else {
 		isRolling = !isRolling;
 		capsule->SetCapsuleSize(OutRadius, OutHalfHeight, true);
+		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, -40));
+		FVector Forward = GetActorForwardVector();
+		USkeletalMeshComponent* mesh = GetSkeletalMesh();
+		FRotator rotator(0, -90, 0);
+		mesh->SetRelativeRotation(rotator);
 	}
 }
 
