@@ -448,6 +448,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isFlipping = false;
 
+	UPROPERTY(BlueprintReadWrite, Category = "Physics")
+	bool fromTackle = false;
+
 	class UInputComponent* playerinputcomponent_copy;
 	void testfunction(float);
 

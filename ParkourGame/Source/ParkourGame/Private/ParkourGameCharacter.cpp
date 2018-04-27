@@ -342,12 +342,12 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	if (isRolling) {
 		Tick_Roll(DeltaSeconds);
 	}
-	if (IsFullRagdoll() && GetSkeletalMesh()->GetComponentVelocity().Z < 1.0f && GetSkeletalMesh()->GetComponentVelocity().X < 2.0f
-		&& GetSkeletalMesh()->GetComponentVelocity().Y < 2.0f && auto_standup_set_init == false) {
-		UE_LOG(LogTemp, Warning, TEXT("i've entered"));
+	if (IsFullRagdoll() && FMath::Abs(GetSkeletalMesh()->GetComponentVelocity().Z) < 2.0f && FMath::Abs(GetSkeletalMesh()->GetComponentVelocity().X) < 3.0f
+		&& FMath::Abs(GetSkeletalMesh()->GetComponentVelocity().Y) < 3.0f && auto_standup_set_init == false) {
 		auto_standup_set_init = true;
 		GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-		GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), 2.0f , false);
+		GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), 2.0f, false);
+		
 	}
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
@@ -1295,6 +1295,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
     Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		EnablePhysicalAnimation(true);
 
+
     if (HasAuthority())
     {
       StandUpAnimRow = ChooseStandUpAnimation(StandUpDir);
@@ -1364,12 +1365,12 @@ void AParkourGameCharacter::OnRep_VaultData()
 void AParkourGameCharacter::OnRep_StandUpAnimRow()
 {
   if (StandUpAnimRow == NAME_None) return;
-
+  
   USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
   FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
   UCapsuleComponent* Capsule = GetCapsuleComponent();
   Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, .0));
-
+  
   PlayStandUpAnimation();
 }
 
