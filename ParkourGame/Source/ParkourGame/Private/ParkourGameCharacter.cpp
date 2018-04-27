@@ -322,7 +322,6 @@ void AParkourGameCharacter::ResetStandupAnim()
   if (AController* Controller = GetController())
     Controller->SetIgnoreMoveInput(false);
 
-  auto_standup_time = getupdelay;
   EnableJumping(true);
 
   if (HasAuthority())
@@ -344,12 +343,13 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	if (isRolling) {
 		Tick_Roll(DeltaSeconds);
 	}
-	if (IsFullRagdoll() && (GetVelocity().Z) < 2.0f) {
-		auto_standup_time = auto_standup_time - DeltaSeconds;
-		if (auto_standup_time < 0.1f) {
-			StandUp();
-		}
+	
+  // OWNING CLIENT ONLY
+  if (Role == ROLE_AutonomousProxy && !AutoStandUpHandle.IsValid() && IsFullRagdoll() && (GetVelocity().Z) < 2.0f)
+  {
+    GetWorld()->GetTimerManager().SetTimer(AutoStandUpHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), GetUpDelay, false);
 	}
+
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
 	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
@@ -963,10 +963,14 @@ void AParkourGameCharacter::LogoutPlayer()
 
 void AParkourGameCharacter::StandUp()
 {
-  ResetAFKTimer();
-	if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
+  if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f)
+  {
+    GetWorld()->GetTimerManager().SetTimer(AutoStandUpHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), GetUpDelay, false);
+    return;
+  }
 
   FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
+  AutoStandUpHandle.Invalidate();
   Server_StandUp(SocketLocation);
 }
 
@@ -1256,7 +1260,6 @@ void AParkourGameCharacter::EnableJumping(bool Enable /*= true*/)
 
 void AParkourGameCharacter::OnRep_RagdollState()
 {
-	UE_LOG(LogTemp, Warning, TEXT("has authority %d"), HasAuthority());
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)

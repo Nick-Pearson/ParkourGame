@@ -241,6 +241,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+  float GetUpDelay = 2.0f;
+  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
 
@@ -269,6 +272,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "ParkourGameCharacter|Events")
 		FParkourGameCharacterEvent OnRagdoll;
+
+
 
 protected:
 
@@ -531,8 +536,7 @@ private:
 
   FTimerHandle ResetStandupHandle;
 
-  const float getupdelay = 2.0f;
-  float auto_standup_time = getupdelay;
+  FTimerHandle AutoStandUpHandle;
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;
