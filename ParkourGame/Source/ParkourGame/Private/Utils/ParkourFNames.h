@@ -28,6 +28,8 @@ namespace FParkourFNames
 	const extern FName Bone_Spine_03;
 
 	const extern FName Bone_Pelvis;
+
+  const extern FName Socket_Head;
 	
 	const extern FName Input_JoinGame;
 

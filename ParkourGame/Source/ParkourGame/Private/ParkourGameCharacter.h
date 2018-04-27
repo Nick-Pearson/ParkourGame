@@ -199,6 +199,9 @@ class AParkourGameCharacter : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, Category = "Physics", meta = (AllowPrivateAccess = "true"))
 	FVector2D RollMagnitude;
+
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display", meta = (AllowPrivateAccess = "true"))
+  class UStaticMeshComponent* Hat;
 	
 
 
@@ -238,6 +241,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+  float GetUpDelay = 2.0f;
+  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
 
@@ -249,6 +255,9 @@ public:
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   class UMaterialInterface* DefaultMaterial;
+  
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
+  class UMaterialInterface* DefaultHatMaterial;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   TSubclassOf<ABallBase> BallClass;
@@ -263,6 +272,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "ParkourGameCharacter|Events")
 		FParkourGameCharacterEvent OnRagdoll;
+
+
 
 protected:
 
@@ -317,6 +328,9 @@ protected:
 
 	void BeginGrip(EHandSideEnum Hand);
 	void EndGrip(EHandSideEnum Hand);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_Vault(EHandSideEnum Hand);
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_BeginGrip(EHandSideEnum Hand);
@@ -409,6 +423,8 @@ public:
 
 	FORCEINLINE UTextRenderComponent* GetPlayerNameTag() const { return PlayerNameTag; }
 
+  FORCEINLINE UStaticMeshComponent* GetHat() const { return Hat; }
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void SetRagdollOnBodyPart(EBodyPart Part, bool bNewRagdoll);
 
@@ -436,6 +452,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isFlipping = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Physics")
+	bool fromTackle = false;
 
 	class UInputComponent* playerinputcomponent_copy;
 	void testfunction(float);
@@ -482,6 +501,10 @@ private:
 
 	// Function called when the client recieves an update to the ragdoll state
 	UFUNCTION()
+	void OnRep_Vault(EHandSideEnum Hand);
+	
+	// Function called when the client recieves an update to the ragdoll state
+	UFUNCTION()
 	void OnRep_RagdollState();
 
 	//set this variable to be replicated to all clients
@@ -512,6 +535,8 @@ private:
   FName StandUpAnimRow = NAME_None;
 
   FTimerHandle ResetStandupHandle;
+
+  FTimerHandle AutoStandUpHandle;
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;

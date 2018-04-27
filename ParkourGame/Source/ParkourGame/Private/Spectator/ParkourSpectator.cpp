@@ -2,10 +2,35 @@
 
 #include "SpectatorCameraActor.h"
 #include "../ParkourGameCharacter.h"
+#include "../Utils/SingletonHelper.h"
+#include "../MiniGame/MiniGameManager.h"
+#include "../UI/ParkourGameHUD.h"
 
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "Camera/PlayerCameraManager.h"
+
+static void cmd_OpenMenu(UWorld* World)
+{
+  APlayerController* PlayerCtlr = World->GetFirstPlayerController();
+  AParkourSpectator* PlayerCharacter = PlayerCtlr ? Cast<AParkourSpectator>(PlayerCtlr->GetPawn()) : nullptr;
+
+  if (!IsValid(PlayerCharacter))
+    return;
+
+  PlayerCharacter->OpenControls();
+}
+
+FAutoConsoleCommandWithWorld OpenMenuCmd(
+  TEXT("Parkour.OpenControls"),
+  TEXT("Open the game controls"),
+  FConsoleCommandWithWorldDelegate::CreateStatic(cmd_OpenMenu));
+
+
+AParkourSpectator::AParkourSpectator()
+{
+  bReplicates = true;
+}
 
 void AParkourSpectator::BeginPlay()
 {
@@ -21,8 +46,6 @@ void AParkourSpectator::BeginPlay()
 	{
 		AllCameras.Add(*It);
 	}
-
-	WorldPtr->GetTimerManager().SetTimer(TargetChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::TargetRandomPlayer), TargetChangeTime, true);
 }
 
 void AParkourSpectator::SetViewedActor(const AActor* NewActor)
@@ -47,6 +70,34 @@ void AParkourSpectator::TargetRandomPlayer()
 	if (ValidTargets.Num() == 0) return;
 
 	SetViewedActor(ValidTargets[FMath::RandHelper(ValidTargets.Num())]);
+}
+
+void AParkourSpectator::BeginAutoCam()
+{
+  GetWorld()->GetTimerManager().SetTimer(TargetChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::TargetRandomPlayer), TargetChangeTime, true);
+  TargetRandomPlayer();
+}
+
+bool AParkourSpectator::StartGame_Validate(TSubclassOf<AMiniGameBase> GameClass)
+{
+  return true;
+}
+
+void AParkourSpectator::StartGame_Implementation(TSubclassOf<AMiniGameBase> GameClass)
+{
+  AMiniGameManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AMiniGameManager>(GetWorld());
+
+  if (!Mgr) return;
+
+  Mgr->CreateGame(GameClass);
+}
+
+void AParkourSpectator::OpenControls()
+{
+  APlayerController* Controller = Cast<APlayerController>(GetController());
+  AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(Controller ? Controller->GetHUD() : nullptr);
+  if (HUDptr)
+    HUDptr->OpenSpectatorUI(this);
 }
 
 void AParkourSpectator::SwitchCamera()
