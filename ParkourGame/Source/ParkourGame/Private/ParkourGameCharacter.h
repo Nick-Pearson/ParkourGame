@@ -242,7 +242,7 @@ public:
 	float BodyMass = 75.0f;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
-  float GetUpDelay = 2.0f;
+  float GetUpDelay = 0.84f;
   
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
