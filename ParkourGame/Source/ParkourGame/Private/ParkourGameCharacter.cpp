@@ -341,7 +341,15 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 
 	CapsuleToRagdoll();
 	if (isRolling) {
-		Tick_Roll(DeltaSeconds);
+		if (StopRollingDelay <= 0) {
+			Roll_Start();
+			StopRollingDelay = 1.0f;
+		}
+		else{
+			MoveForward(1.0f);
+			Tick_Roll(DeltaSeconds);
+			StopRollingDelay = StopRollingDelay - DeltaSeconds;
+		}
 	}
 	
   // OWNING CLIENT ONLY
@@ -465,22 +473,33 @@ void AParkourGameCharacter::testfunction(float x) {
 
 
 void AParkourGameCharacter::Roll_Start() {
-	// this part is the flip
-	// TODO add a check for distance from floor so you can roll on ramps
-	if (GetVelocity().Z != 0.0f && !isFlipping && !isRolling) {
-		isFlipping = true;
-		UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
-		return;
-	}
-	// and this is the standard roll
-	static bool initialised;
+	UE_LOG(LogTemp, Warning, TEXT("can roll from tackle is: %d"), CanRollFromTackle);
+	if (!CanRollFromTackle) return;
+	// initialise some variables
 	UCapsuleComponent* capsule = GetCapsuleComponent();
 	static float OutRadius;
 	static float OutHalfHeight;
+	static bool initialised;
 	if (!initialised) {
 		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
 		initialised = true;
 	}
+	// this part is how it's initialised, works with animation blueprint
+	// TODO add a check for distance from floor so you can roll on ramps
+	UE_LOG(LogTemp, Warning, TEXT("time to floor is: %f"), Time_to_Floor());
+	if (GetVelocity().Z != 0.0f && !isFlipping && !isRolling && FMath::Abs(Time_to_Floor()) < 0.4f) {
+		if (AController* Controller = GetController())
+			Controller->SetIgnoreMoveInput(true);
+		EnableJumping(false);
+		isFlipping = true;
+		FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
+		AutoStandUpHandle.Invalidate();
+		Server_StandUp(SocketLocation);
+		UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
+		return;
+	}
+	// and this is the actual roll, called from the animation blueprint after the initial animation is finished, if called again while
+	// rolling will exit roll
 	if (!isRolling) {
 		playerinputcomponent_copy->BindAxis("MoveForward", this, &AParkourGameCharacter::testfunction);
 		isRolling = !isRolling;
@@ -496,6 +515,10 @@ void AParkourGameCharacter::Roll_Start() {
 		USkeletalMeshComponent* mesh = GetSkeletalMesh();
 		FRotator rotator(0, -90, 0);
 		mesh->SetRelativeRotation(rotator);
+		if (AController* Controller = GetController())
+			Controller->SetIgnoreMoveInput(false);
+		EnableJumping(true);
+		CanRollFromTackle = false;
 	}
 }
 
@@ -1375,7 +1398,8 @@ void AParkourGameCharacter::OnRep_StandUpAnimRow()
   UCapsuleComponent* Capsule = GetCapsuleComponent();
   Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, .0));
   
-  PlayStandUpAnimation();
+  if (!isFlipping)
+	PlayStandUpAnimation();
 }
 
 void AParkourGameCharacter::CapsuleToRagdoll()

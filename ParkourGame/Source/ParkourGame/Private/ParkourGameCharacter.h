@@ -241,9 +241,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
-  float GetUpDelay = 0.84f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+    float GetUpDelay = 0.84f;
   
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	float StopRollingDelay = 1.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
 
@@ -453,8 +456,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isFlipping = false;
 
+
 	UPROPERTY(BlueprintReadWrite, Category = "Physics")
-	bool fromTackle = false;
+	bool CanRollFromTackle = false;
 
 	class UInputComponent* playerinputcomponent_copy;
 	void testfunction(float);
