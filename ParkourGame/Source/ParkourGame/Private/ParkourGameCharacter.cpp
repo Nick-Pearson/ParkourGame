@@ -288,8 +288,9 @@ void AParkourGameCharacter::PlayStandUpAnimation()
   UAnimInstance *animation = GetSkeletalMesh()->GetAnimInstance();
   FAnimMontageInstance * active_montage = animation->GetActiveMontageInstance();
   float montage_rate = animation->Montage_GetPlayRate(Row->Montage);
-  UE_LOG(LogTemp, Warning, TEXT("My montage: %f"), montage_rate);
   */
+  //UE_LOG(LogTemp, Warning, TEXT("got to inside standupanimation"));
+  //*/
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
   GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0)/2.0f - 1.0f), false);
 }
@@ -298,7 +299,7 @@ FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction)
 {
   if (!StandUpAnimationTable)
     return NAME_None;
-
+ 
   TArray<FName> RowNames = StandUpAnimationTable->GetRowNames();
   TArray<FStandUpMontageRow*> ValidRows;
   StandUpAnimationTable->GetAllRows<FStandUpMontageRow>("", ValidRows);
@@ -342,13 +343,13 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	if (isRolling) {
 		Tick_Roll(DeltaSeconds);
 	}
-	if (IsFullRagdoll() && GetSkeletalMesh()->GetComponentVelocity().Z < 1.0f && GetSkeletalMesh()->GetComponentVelocity().X < 2.0f
-		&& GetSkeletalMesh()->GetComponentVelocity().Y < 2.0f && auto_standup_set_init == false) {
-		UE_LOG(LogTemp, Warning, TEXT("i've entered"));
-		auto_standup_set_init = true;
-		GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-		GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), 2.0f , false);
+	
+  // OWNING CLIENT ONLY
+  if (Role == ROLE_AutonomousProxy && !AutoStandUpHandle.IsValid() && IsFullRagdoll() && (GetVelocity().Z) < 2.0f)
+  {
+    GetWorld()->GetTimerManager().SetTimer(AutoStandUpHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), GetUpDelay, false);
 	}
+
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
 	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
@@ -962,10 +963,14 @@ void AParkourGameCharacter::LogoutPlayer()
 
 void AParkourGameCharacter::StandUp()
 {
-  ResetAFKTimer();
-	if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f) return;
+  if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f)
+  {
+    GetWorld()->GetTimerManager().SetTimer(AutoStandUpHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), GetUpDelay, false);
+    return;
+  }
 
   FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
+  AutoStandUpHandle.Invalidate();
   Server_StandUp(SocketLocation);
 }
 
@@ -1118,7 +1123,6 @@ bool AParkourGameCharacter::Server_StandUp_Validate(FVector ClientSideLocation)
 void AParkourGameCharacter::Server_StandUp_Implementation(FVector ClientSideLocation)
 {
   SetFullRagdoll(false);
-  auto_standup_set_init = false;
   FVector AdjustedLocation = ClientSideLocation;
 
   if (UNavigationSystem* Nav = GetWorld()->GetNavigationSystem())
@@ -1295,6 +1299,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
     Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		EnablePhysicalAnimation(true);
 
+
     if (HasAuthority())
     {
       StandUpAnimRow = ChooseStandUpAnimation(StandUpDir);
@@ -1364,12 +1369,12 @@ void AParkourGameCharacter::OnRep_VaultData()
 void AParkourGameCharacter::OnRep_StandUpAnimRow()
 {
   if (StandUpAnimRow == NAME_None) return;
-
+  
   USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
   FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
   UCapsuleComponent* Capsule = GetCapsuleComponent();
   Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, .0));
-
+  
   PlayStandUpAnimation();
 }
 

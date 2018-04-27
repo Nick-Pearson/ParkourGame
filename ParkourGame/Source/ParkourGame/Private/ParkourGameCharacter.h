@@ -241,6 +241,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+  float GetUpDelay = 2.0f;
+  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
 
@@ -269,6 +272,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "ParkourGameCharacter|Events")
 		FParkourGameCharacterEvent OnRagdoll;
+
+
 
 protected:
 
@@ -448,6 +453,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Physics")
 	bool isFlipping = false;
 
+	UPROPERTY(BlueprintReadWrite, Category = "Physics")
+	bool fromTackle = false;
+
 	class UInputComponent* playerinputcomponent_copy;
 	void testfunction(float);
 
@@ -527,7 +535,8 @@ private:
   FName StandUpAnimRow = NAME_None;
 
   FTimerHandle ResetStandupHandle;
-  bool auto_standup_set_init = false;
+
+  FTimerHandle AutoStandUpHandle;
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;
