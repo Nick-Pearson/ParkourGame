@@ -530,7 +530,9 @@ private:
   FName StandUpAnimRow = NAME_None;
 
   FTimerHandle ResetStandupHandle;
-  bool auto_standup_set_init = false;
+
+  const float getupdelay = 2.0f;
+  float auto_standup_time = getupdelay;
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;

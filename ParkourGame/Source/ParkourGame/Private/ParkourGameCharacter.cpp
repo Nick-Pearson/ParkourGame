@@ -288,8 +288,9 @@ void AParkourGameCharacter::PlayStandUpAnimation()
   UAnimInstance *animation = GetSkeletalMesh()->GetAnimInstance();
   FAnimMontageInstance * active_montage = animation->GetActiveMontageInstance();
   float montage_rate = animation->Montage_GetPlayRate(Row->Montage);
-  UE_LOG(LogTemp, Warning, TEXT("My montage: %f"), montage_rate);
   */
+  //UE_LOG(LogTemp, Warning, TEXT("got to inside standupanimation"));
+  //*/
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
   GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0)/2.0f - 1.0f), false);
 }
@@ -298,7 +299,7 @@ FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction)
 {
   if (!StandUpAnimationTable)
     return NAME_None;
-
+ 
   TArray<FName> RowNames = StandUpAnimationTable->GetRowNames();
   TArray<FStandUpMontageRow*> ValidRows;
   StandUpAnimationTable->GetAllRows<FStandUpMontageRow>("", ValidRows);
@@ -321,6 +322,7 @@ void AParkourGameCharacter::ResetStandupAnim()
   if (AController* Controller = GetController())
     Controller->SetIgnoreMoveInput(false);
 
+  auto_standup_time = getupdelay;
   EnableJumping(true);
 
   if (HasAuthority())
@@ -342,12 +344,11 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	if (isRolling) {
 		Tick_Roll(DeltaSeconds);
 	}
-	if (IsFullRagdoll() && FMath::Abs(GetSkeletalMesh()->GetComponentVelocity().Z) < 2.0f && FMath::Abs(GetSkeletalMesh()->GetComponentVelocity().X) < 3.0f
-		&& FMath::Abs(GetSkeletalMesh()->GetComponentVelocity().Y) < 3.0f && auto_standup_set_init == false) {
-		auto_standup_set_init = true;
-		GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-		GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), 2.0f, false);
-		
+	if (IsFullRagdoll() && (GetVelocity().Z) < 2.0f) {
+		auto_standup_time = auto_standup_time - DeltaSeconds;
+		if (auto_standup_time < 0.1f) {
+			StandUp();
+		}
 	}
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
@@ -1118,7 +1119,6 @@ bool AParkourGameCharacter::Server_StandUp_Validate(FVector ClientSideLocation)
 void AParkourGameCharacter::Server_StandUp_Implementation(FVector ClientSideLocation)
 {
   SetFullRagdoll(false);
-  auto_standup_set_init = false;
   FVector AdjustedLocation = ClientSideLocation;
 
   if (UNavigationSystem* Nav = GetWorld()->GetNavigationSystem())
@@ -1256,6 +1256,7 @@ void AParkourGameCharacter::EnableJumping(bool Enable /*= true*/)
 
 void AParkourGameCharacter::OnRep_RagdollState()
 {
+	UE_LOG(LogTemp, Warning, TEXT("has authority %d"), HasAuthority());
 	USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
 	
 	if (m_RagdollState[(int32)EBodyPart::MAX] > 0)
