@@ -527,6 +527,7 @@ private:
   FName StandUpAnimRow = NAME_None;
 
   FTimerHandle ResetStandupHandle;
+  bool auto_standup_set_init = false;
 
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;

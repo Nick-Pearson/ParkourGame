@@ -342,6 +342,13 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	if (isRolling) {
 		Tick_Roll(DeltaSeconds);
 	}
+	if (IsFullRagdoll() && GetSkeletalMesh()->GetComponentVelocity().Z < 1.0f && GetSkeletalMesh()->GetComponentVelocity().X < 2.0f
+		&& GetSkeletalMesh()->GetComponentVelocity().Y < 2.0f && auto_standup_set_init == false) {
+		UE_LOG(LogTemp, Warning, TEXT("i've entered"));
+		auto_standup_set_init = true;
+		GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
+		GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), 2.0f , false);
+	}
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
 	const float PhysicsSubtickDeltaSeconds = 1.0f / (float)PhysicsSubstepTargetFramerate;
@@ -994,7 +1001,6 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 
 	// Ragdoll controls
 	PlayerInputComponent->BindAction("RagdollBody", IE_Pressed, this, &AParkourGameCharacter::RagdollBody);
-	PlayerInputComponent->BindAction("StandUp", IE_Pressed, this, &AParkourGameCharacter::StandUp);
 
 	// TEMP DISABLED -- for physical animation
 	//PlayerInputComponent->BindAction("RagdollArmR", IE_Pressed, this, &AParkourGameCharacter::RagdollArmR);
@@ -1112,7 +1118,7 @@ bool AParkourGameCharacter::Server_StandUp_Validate(FVector ClientSideLocation)
 void AParkourGameCharacter::Server_StandUp_Implementation(FVector ClientSideLocation)
 {
   SetFullRagdoll(false);
-
+  auto_standup_set_init = false;
   FVector AdjustedLocation = ClientSideLocation;
 
   if (UNavigationSystem* Nav = GetWorld()->GetNavigationSystem())
