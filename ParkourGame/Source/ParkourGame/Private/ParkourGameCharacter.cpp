@@ -277,15 +277,21 @@ void AParkourGameCharacter::PlayStandUpAnimation()
   
   if (!Row || !Row->Montage) return;
 
-  PlayAnimMontage(Row->Montage);
+  PlayAnimMontage(Row->Montage, 2.0f);
  
   if(AController* Controller = GetController())
     Controller->SetIgnoreMoveInput(true);
 
   EnableJumping(false);
-  
+  /*
+  //used to get rate of the current montage
+  UAnimInstance *animation = GetSkeletalMesh()->GetAnimInstance();
+  FAnimMontageInstance * active_montage = animation->GetActiveMontageInstance();
+  float montage_rate = animation->Montage_GetPlayRate(Row->Montage);
+  UE_LOG(LogTemp, Warning, TEXT("My montage: %f"), montage_rate);
+  */
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0) - 1.0f), false);
+  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0)/2.0f - 1.0f), false);
 }
 
 FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction) const
@@ -1291,10 +1297,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 	}
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
 	{
-		PlayerMesh->SetAllBodiesBelowSimulatePhysics(
-			UParkourHelperLibrary::GetRootBoneForBodyPart((EBodyPart)i),
-			m_RagdollState[i] > 0,
-				true);
+		PlayerMesh->SetAllBodiesBelowSimulatePhysics(UParkourHelperLibrary::GetRootBoneForBodyPart((EBodyPart)i), m_RagdollState[i] > 0, true);
 	}
 }
 
