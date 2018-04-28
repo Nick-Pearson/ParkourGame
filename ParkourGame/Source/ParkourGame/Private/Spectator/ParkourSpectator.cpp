@@ -13,7 +13,14 @@
 static void cmd_OpenMenu(UWorld* World)
 {
   APlayerController* PlayerCtlr = World->GetFirstPlayerController();
-  AParkourSpectator* PlayerCharacter = PlayerCtlr ? Cast<AParkourSpectator>(PlayerCtlr->GetPawn()) : nullptr;
+
+  // If we have become a pawn using the console command then we use GetPawn, otherwise we need to use spectator pawn
+  AParkourSpectator* PlayerCharacter = PlayerCtlr ? Cast<AParkourSpectator>(PlayerCtlr->GetSpectatorPawn()) : nullptr;
+
+#if WITH_EDITOR
+  if(!PlayerCharacter)
+    PlayerCharacter = Cast<AParkourSpectator>(PlayerCtlr->GetPawn());
+#endif
 
   if (!IsValid(PlayerCharacter))
     return;
@@ -78,18 +85,12 @@ void AParkourSpectator::BeginAutoCam()
   TargetRandomPlayer();
 }
 
-bool AParkourSpectator::StartGame_Validate(TSubclassOf<AMiniGameBase> GameClass)
+void AParkourSpectator::StartGame(TSubclassOf<AMiniGameBase> GameClass)
 {
-  return true;
-}
+  AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController());
 
-void AParkourSpectator::StartGame_Implementation(TSubclassOf<AMiniGameBase> GameClass)
-{
-  AMiniGameManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AMiniGameManager>(GetWorld());
-
-  if (!Mgr) return;
-
-  Mgr->CreateGame(GameClass);
+  if (Controller)
+    Controller->StartGame(GameClass);
 }
 
 void AParkourSpectator::OpenControls()

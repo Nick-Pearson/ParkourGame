@@ -38,7 +38,7 @@ void AMiniGameManager::BeginPlay()
 	if(!HasAuthority())
 		OnGameOver.AddDynamic(this, &AMiniGameManager::OnGameEnded);
 
-	//SetNextGameTimer();
+	SetNextGameTimer();
 }
 
 void AMiniGameManager::CreateRandomGame()
@@ -138,7 +138,7 @@ void AMiniGameManager::SetNextGameTimer()
 	if (!HasAuthority())
 		return;
 
-	GetWorld()->GetTimerManager().SetTimer(NextGameTimer, this, &AMiniGameManager::CreateRandomGame, GameCreationInterval);
+	//GetWorld()->GetTimerManager().SetTimer(NextGameTimer, this, &AMiniGameManager::CreateRandomGame, GameCreationInterval);
 }
 
 void AMiniGameManager::OnGameEnded(AMiniGameBase* Game, EMiniGameEndReason Reason)

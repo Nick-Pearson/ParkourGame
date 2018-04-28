@@ -32,7 +32,7 @@ public:
   UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
   void BeginAutoCam();
 
-  UFUNCTION(BlueprintCallable, Category = "ParkourSpectator", Server, Unreliable, WithValidation)
+  UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
   void StartGame(TSubclassOf<AMiniGameBase> GameClass);
 
   void OpenControls();
