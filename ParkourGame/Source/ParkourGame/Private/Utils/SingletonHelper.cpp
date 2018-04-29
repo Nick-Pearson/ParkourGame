@@ -4,6 +4,7 @@
 
 #include "../MiniGame/MiniGameManager.h"
 #include "../ParkourGameCharacter.h"
+#include "../Spectator/ReplayManager.h"
 
 FSingletonHelper::FSingletonHelper()
 {
@@ -55,5 +56,13 @@ class AMiniGameManager* USingletonHelperLibrary::GetMiniGameManager(UObject* Wor
 	if(AParkourGameCharacter* Char = Cast<AParkourGameCharacter>(UGameplayStatics::GetPlayerPawn(WorldContextObject, 0)))
 		return Char->SingletonHelper->GetSingletonObject<AMiniGameManager>(Char->GetWorld());
 
-	return nullptr;
+	return FSingletonHelper::Static_GetSingletonObject<AMiniGameManager>(GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull));
+}
+
+class AReplayManager* USingletonHelperLibrary::GetReplayManager(UObject* WorldContextObject)
+{
+  if (AParkourGameCharacter* Char = Cast<AParkourGameCharacter>(UGameplayStatics::GetPlayerPawn(WorldContextObject, 0)))
+    return Char->SingletonHelper->GetSingletonObject<AReplayManager>(Char->GetWorld());
+
+  return FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull));
 }

@@ -39,4 +39,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SingeltonHelperLibrary", meta = (WorldContext = "WorldContextObject"))
 	static class AMiniGameManager* GetMiniGameManager(UObject* WorldContextObject);
 
-};
+  UFUNCTION(BlueprintPure, Category = "SingeltonHelperLibrary", meta = (WorldContext = "WorldContextObject"))
+  static class AReplayManager* GetReplayManager(UObject* WorldContextObject);
+}
+;

@@ -19,6 +19,9 @@ public:
   UFUNCTION(BlueprintImplementableEvent)
   void OpenSpectatorUI(AParkourSpectator* Spectator);
 
+  UFUNCTION(BlueprintImplementableEvent)
+  void InitialisePlayerUI();
+
 private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD", meta = (AllowPrivateAccess = "true"))

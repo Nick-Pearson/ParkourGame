@@ -6,6 +6,16 @@
 
 class ASpectatorCameraActor;
 
+// set of events to broadcasts events between different spectators in the same game
+// broadcast these from NetMulticast events
+namespace FParkourSpectatorBroadcasts
+{
+  DECLARE_MULTICAST_DELEGATE(FStartActionReplayEvent);
+
+  extern FStartActionReplayEvent StartActionReplay;
+};
+
+
 UCLASS()
 class AParkourSpectator : public ASpectatorPawn
 {
@@ -27,7 +37,8 @@ public:
 	float TargetChangeTime = 10.0f;
 	FTimerHandle TargetChangeHandle;
 
-	void TargetRandomPlayer();
+  UFUNCTION()
+	void TargetNewPlayer();
 
   UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
   void BeginAutoCam();
@@ -35,10 +46,18 @@ public:
   UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
   void StartGame(TSubclassOf<AMiniGameBase> GameClass);
 
+  UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
+  void EndCurrentGame();
+  
+  UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
+  void StartActionReplay();
+
   void OpenControls();
 
 private:
 
+  void InitialiseActionReplay();
+  void StartPlayingReplay();
 
 	void SwitchCamera();
 

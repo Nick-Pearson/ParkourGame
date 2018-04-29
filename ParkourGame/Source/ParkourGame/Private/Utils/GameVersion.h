@@ -6,7 +6,7 @@
 
 #define GAME_VERSION_MAJOR 0
 #define GAME_VERSION_MINOR 7
-#define GAME_VERSION_PATCH 1
+#define GAME_VERSION_PATCH 2
 
 USTRUCT(BlueprintType)
 struct FGameVersion

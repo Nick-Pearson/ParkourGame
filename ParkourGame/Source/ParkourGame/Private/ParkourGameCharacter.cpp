@@ -16,7 +16,7 @@
 #include "Networking/ParkourPlayerState.h"
 #include "Audio/FootstepAudioTableRow.h"
 #include "Spectator/ParkourSpectator.h"
-#include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
+#include "UI/ParkourGameHUD.h"
 
 // Engine
 #include "Camera/CameraComponent.h"
@@ -36,6 +36,7 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "EngineUtils.h"
 #include "AI/Navigation/NavigationSystem.h"
+#include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -107,6 +108,11 @@ AParkourGameCharacter::AParkourGameCharacter(const FObjectInitializer& ObjectIni
   Hat->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SingletonHelper = MakeShareable(new FSingletonHelper);
+  
+#if !WITH_EDITOR
+  // disable screen messages by default in all non-editor builds
+  GAreScreenMessagesEnabled = false;
+#endif
 }
 
 void AParkourGameCharacter::BeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
@@ -174,6 +180,11 @@ void AParkourGameCharacter::BeginPlay()
     GameManager->OnPlayerJoinedTeam.AddDynamic(this, &AParkourGameCharacter::OnJoinedTeam);
     GameManager->OnGameOver.AddDynamic(this, &AParkourGameCharacter::OnGameOver);
   }
+
+  APlayerController* Controller = Cast<APlayerController>(GetController());
+  AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(Controller ? Controller->GetHUD() : nullptr);
+  if (HUDptr)
+    HUDptr->InitialisePlayerUI();
 }
 
 void AParkourGameCharacter::EndPlay(EEndPlayReason::Type Reason)
@@ -277,22 +288,16 @@ void AParkourGameCharacter::PlayStandUpAnimation()
   
   if (!Row || !Row->Montage) return;
 
-  PlayAnimMontage(Row->Montage, 2.0f);
+  const float PlayRate = 2.0f;
+  PlayAnimMontage(Row->Montage, PlayRate);
  
   if(AController* Controller = GetController())
     Controller->SetIgnoreMoveInput(true);
 
   EnableJumping(false);
-  /*
-  //used to get rate of the current montage
-  UAnimInstance *animation = GetSkeletalMesh()->GetAnimInstance();
-  FAnimMontageInstance * active_montage = animation->GetActiveMontageInstance();
-  float montage_rate = animation->Montage_GetPlayRate(Row->Montage);
-  */
-  //UE_LOG(LogTemp, Warning, TEXT("got to inside standupanimation"));
-  //*/
+
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0)/2.0f - 1.0f), false);
+  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0) / (Row->Montage->RateScale * PlayRate)), false);
 }
 
 FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction) const

@@ -15,6 +15,14 @@ public:
 
   // Spectator Broadcast Functions
   // (have to be here as spectators have no net role in a build)
+
+
   UFUNCTION(Server, Unreliable, WithValidation)
-  void StartGame(TSubclassOf<AMiniGameBase> GameClass);
+  void Server_StartGame(TSubclassOf<AMiniGameBase> GameClass);
+
+  UFUNCTION(Server, Unreliable, WithValidation)
+  void Server_EndCurrentGame();
+
+  UFUNCTION(NetMulticast, Unreliable)
+  void Net_StartReplay();
 };

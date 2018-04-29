@@ -9,6 +9,10 @@
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "Camera/PlayerCameraManager.h"
+#include "NetworkReplayStreaming.h"
+#include "ReplayManager.h"
+
+FParkourSpectatorBroadcasts::FStartActionReplayEvent FParkourSpectatorBroadcasts::StartActionReplay;
 
 static void cmd_OpenMenu(UWorld* World)
 {
@@ -37,6 +41,11 @@ FAutoConsoleCommandWithWorld OpenMenuCmd(
 AParkourSpectator::AParkourSpectator()
 {
   bReplicates = true;
+
+#if !WITH_EDITOR
+  // disable screen messages by default in all non-editor builds
+  GAreScreenMessagesEnabled = false;
+#endif
 }
 
 void AParkourSpectator::BeginPlay()
@@ -53,6 +62,16 @@ void AParkourSpectator::BeginPlay()
 	{
 		AllCameras.Add(*It);
 	}
+
+  FParkourSpectatorBroadcasts::StartActionReplay.AddUObject(this, &AParkourSpectator::StartPlayingReplay);
+
+  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+
+  if (Mgr)
+  {
+    Mgr->OnReplayStarted.AddDynamic(this, &AParkourSpectator::TargetNewPlayer);
+    Mgr->OnReplayEnded.AddDynamic(this, &AParkourSpectator::TargetNewPlayer);
+  }
 }
 
 void AParkourSpectator::SetViewedActor(const AActor* NewActor)
@@ -63,16 +82,27 @@ void AParkourSpectator::SetViewedActor(const AActor* NewActor)
 	SwitchCamera();
 }
 
-void AParkourSpectator::TargetRandomPlayer()
+void AParkourSpectator::TargetNewPlayer()
 {
-	// we have to construct this stupid extra list as the raw pawn list container is not exposed
-	TArray<const AParkourGameCharacter*> ValidTargets;
+  if (!TargetChangeHandle.IsValid()) return;
 
-	for (auto it = GetWorld()->GetPawnIterator(); it; ++it)
-	{
-		if (const AParkourGameCharacter* Target = Cast<AParkourGameCharacter>(*it))
-			ValidTargets.Add(Target);
-	}
+	// we have to construct this stupid extra list as the raw pawn list container is not exposed
+	TArray<const AActor*> ValidTargets;
+
+  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+
+  if (Mgr && Mgr->IsReplaying())
+  {
+    Mgr->GetAllReplayActors(ValidTargets);
+  }
+  else
+  {
+    for (auto it = GetWorld()->GetPawnIterator(); it; ++it)
+    {
+      if (const AParkourGameCharacter* Target = Cast<AParkourGameCharacter>(*it))
+        ValidTargets.Add(Target);
+    }
+  }
 
 	if (ValidTargets.Num() == 0) return;
 
@@ -81,16 +111,26 @@ void AParkourSpectator::TargetRandomPlayer()
 
 void AParkourSpectator::BeginAutoCam()
 {
-  GetWorld()->GetTimerManager().SetTimer(TargetChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::TargetRandomPlayer), TargetChangeTime, true);
-  TargetRandomPlayer();
+  GetWorld()->GetTimerManager().SetTimer(TargetChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::TargetNewPlayer), TargetChangeTime, true);
+  TargetNewPlayer();
 }
 
 void AParkourSpectator::StartGame(TSubclassOf<AMiniGameBase> GameClass)
 {
-  AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController());
+  if (AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController()))
+    Controller->Server_StartGame(GameClass);
+}
 
-  if (Controller)
-    Controller->StartGame(GameClass);
+void AParkourSpectator::EndCurrentGame()
+{
+  if (AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController()))
+    Controller->Server_EndCurrentGame();
+}
+
+void AParkourSpectator::StartActionReplay()
+{
+  if (AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController()))
+    Controller->Net_StartReplay();
 }
 
 void AParkourSpectator::OpenControls()
@@ -99,6 +139,31 @@ void AParkourSpectator::OpenControls()
   AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(Controller ? Controller->GetHUD() : nullptr);
   if (HUDptr)
     HUDptr->OpenSpectatorUI(this);
+
+  InitialiseActionReplay();
+}
+
+void AParkourSpectator::InitialiseActionReplay()
+{
+  UWorld* WorldPtr = GetWorld();
+
+  if (!WorldPtr) return;
+
+  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+
+  if (Mgr)
+  {
+    Mgr->SetRecording(true);
+  }
+}
+
+void AParkourSpectator::StartPlayingReplay()
+{
+  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+
+  if (!Mgr) return;
+
+  Mgr->StartReplay(Mgr->MaxBufferSize, 1.0f);
 }
 
 void AParkourSpectator::SwitchCamera()

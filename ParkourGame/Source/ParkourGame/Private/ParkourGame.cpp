@@ -13,6 +13,11 @@ class FParkourGame
 	virtual void StartupModule() override
 	{
 		FNetworkVersion::GetLocalNetworkVersionOverride.BindRaw(this, &FParkourGame::GetNetworkVersion);
+
+#if !WITH_EDITOR
+    // disable screen messages by default in all non-editor builds
+    GAreScreenMessagesEnabled = false;
+#endif
 	}
 
 	virtual void ShutdownModule() override

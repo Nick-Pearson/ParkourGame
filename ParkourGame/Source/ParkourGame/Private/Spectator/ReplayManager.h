@@ -14,11 +14,13 @@ struct FPlayerKeyframe
 	static void LinearInterpolate(const FPlayerKeyframe& A, const FPlayerKeyframe& B, float Alpha, FPlayerKeyframe& Result);
 };
 
+class AParkourGameCharacter;
+
 struct FPlayerReplayData
 {
 	// reference to the player
-	FName PlayerID = NAME_None;
-	TWeakObjectPtr<APawn> PlayerPawn;
+  TWeakObjectPtr<AController> PlayerController;
+	TWeakObjectPtr<AParkourGameCharacter> PlayerPawn;
 
 	// actor replaying the player
 	TWeakObjectPtr<APawn> ReplayActor;
@@ -29,13 +31,14 @@ struct FPlayerReplayData
 	// start and end time of the buffer
 	float StartTime = 0.0f;
 	float EndTime = 0.0f;
-	float LastKeyframeTime = 0.0f;
 
 	// keyframe data
 	TArray<FPlayerKeyframe> Keyframes;
 
 	const FPlayerKeyframe* GetKeyframe(int32 index) const;
 };
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FReplayEvent);
 
 UCLASS()
 class AReplayManager : public AInfo
@@ -55,19 +58,35 @@ public:
 	void StartReplay(float ReplayDuration, float ReplayTimeScaling = 1.0f);
 	void StopReplay(bool DestroyActors = true);
 
+  FORCEINLINE bool IsRecording() const { return bIsRecording; }
+  FORCEINLINE bool IsReplaying() const { return bIsReplaying; }
+
+  // get all actors involved in a replay
+  void GetAllReplayActors(TArray<const AActor*>& outActors) const;
+
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Replay Manager", meta = (ClampMin = "0.1"))
-	float SampleInterval = 1.0f;
+	float SampleInterval = 0.1f;
 
 	UPROPERTY(EditAnywhere, Category = "Replay Manager", meta = (ClampMin = "1.0"))
 	float MaxBufferSize = 10.0f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Replay Manager")
-	float CurrentBufferSize = 0.0f;
-
 	UPROPERTY(EditAnywhere, Category = "Replay Manager")
 	TSubclassOf<APawn> ReplayActorClass;
+
+  UPROPERTY(BlueprintAssignable, Category = "Replay Manager")
+  FReplayEvent OnReplayStarted;
+  
+  UPROPERTY(BlueprintAssignable, Category = "Replay Manager")
+  FReplayEvent OnReplayEnded;
+
+  UPROPERTY(BlueprintAssignable, Category = "Replay Manager")
+  FReplayEvent OnRecordingStarted;
+
+  UPROPERTY(BlueprintAssignable, Category = "Replay Manager")
+  FReplayEvent OnRecordingEnded;
+
 private:
 
 	void StartRecording();
@@ -80,7 +99,12 @@ private:
 	void CreateKeyframe(const APawn& Player, FPlayerKeyframe& outKeyframe, float WorldTime);
 
 	void UpdateReplay(float WorldTime);
-	void UpdatePlayerReplay(const FPlayerReplayData& Player, float ReplayTime);
+	void UpdatePlayerReplay(FPlayerReplayData& Player, float ReplayTime);
+
+  void SetupNewPlayer(AController* Controller, AParkourGameCharacter* Player);
+
+  // get the current position of the replay, represented in world time
+  float GetCurrentReplayTime(float WorldTime) const;
 
 private:
 
@@ -89,8 +113,6 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Replay Manager", meta = (AllowPrivateAccess = "true"))
 	bool bIsRecording = false;
-
-	float LastKeyframeTime = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Replay Manager", meta = (AllowPrivateAccess = "true"))
 	bool bIsReplaying = false;
