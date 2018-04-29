@@ -12,6 +12,7 @@
 #include "Physics/PushSpringSystem.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/DataTable.h"
+#include "Spectator/ReplayManager.h"
 #include "ParkourGameCharacter.generated.h"
 
 
@@ -202,8 +203,6 @@ class AParkourGameCharacter : public ACharacter
 
   UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display", meta = (AllowPrivateAccess = "true"))
   class UStaticMeshComponent* Hat;
-	
-
 
 
 public:
@@ -270,6 +269,15 @@ public:
   // time a player can be AFK before they are automatically logged out
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minigame")
   float AFKLogoutTime = 120.0f;
+
+  UPROPERTY(BlueprintReadOnly, Category = "Replay")
+  bool IsReplayActor = false;
+
+  UPROPERTY(BlueprintReadOnly, Category = "Replay")
+  bool Replay_IsInAir = false;
+
+  UPROPERTY(BlueprintReadOnly, Category = "Replay")
+  FVector Replay_Velocity;
 
 	//EVENTS
 
@@ -490,6 +498,15 @@ public:
   
   UFUNCTION(BlueprintCallable, Category = "CharacterState")
   void EnableJumping(bool Enable = true);
+
+  UFUNCTION(BlueprintNativeEvent, Category = "Replay")
+  bool CreateKeyframe(FPlayerKeyframe& Keyframe);
+
+  UFUNCTION(BlueprintNativeEvent, Category = "Replay")
+  bool ReplayKeyframe(const FPlayerKeyframe& Keyframe);
+
+  UFUNCTION(BlueprintNativeEvent, Category = "Replay")
+  void InitialiseReplayActor(AParkourGameCharacter* ReplayActor);
 
 private:
 	AParkourPlayerController* GetParkourPlayerController() const;

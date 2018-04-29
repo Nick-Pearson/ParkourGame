@@ -11,6 +11,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "NetworkReplayStreaming.h"
 #include "ReplayManager.h"
+#include "TimerManager.h"
 
 FParkourSpectatorBroadcasts::FStartActionReplayEvent FParkourSpectatorBroadcasts::StartActionReplay;
 
@@ -117,26 +118,26 @@ void AParkourSpectator::BeginAutoCam()
 
 void AParkourSpectator::StartGame(TSubclassOf<AMiniGameBase> GameClass)
 {
-  if (AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController()))
-    Controller->Server_StartGame(GameClass);
+  if (AParkourPlayerController* ControllerPtr = Cast<AParkourPlayerController>(GetController()))
+    ControllerPtr->Server_StartGame(GameClass);
 }
 
 void AParkourSpectator::EndCurrentGame()
 {
-  if (AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController()))
-    Controller->Server_EndCurrentGame();
+  if (AParkourPlayerController* ControllerPtr = Cast<AParkourPlayerController>(GetController()))
+    ControllerPtr->Server_EndCurrentGame();
 }
 
 void AParkourSpectator::StartActionReplay()
 {
-  if (AParkourPlayerController* Controller = Cast<AParkourPlayerController>(GetController()))
-    Controller->Net_StartReplay();
+  if (AParkourPlayerController* ControllerPtr = Cast<AParkourPlayerController>(GetController()))
+    ControllerPtr->Net_StartReplay();
 }
 
 void AParkourSpectator::OpenControls()
 {
-  APlayerController* Controller = Cast<APlayerController>(GetController());
-  AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(Controller ? Controller->GetHUD() : nullptr);
+  APlayerController* ControllerPtr = Cast<APlayerController>(GetController());
+  AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(ControllerPtr ? ControllerPtr->GetHUD() : nullptr);
   if (HUDptr)
     HUDptr->OpenSpectatorUI(this);
 
@@ -163,7 +164,7 @@ void AParkourSpectator::StartPlayingReplay()
 
   if (!Mgr) return;
 
-  Mgr->StartReplay(Mgr->MaxBufferSize, 1.0f);
+  Mgr->StartReplay(Mgr->MaxBufferSize, 0.5f);
 }
 
 void AParkourSpectator::SwitchCamera()
@@ -179,8 +180,8 @@ void AParkourSpectator::SwitchCamera()
 	FViewTargetTransitionParams TransitionParms;
 	TransitionParms.BlendTime = 0.0f;
 
-	if(APlayerController* Controller = Cast<APlayerController>(GetController()))
-		Controller->SetViewTarget(Cam, TransitionParms);
+	if(APlayerController* ControllerPtr = Cast<APlayerController>(GetController()))
+    ControllerPtr->SetViewTarget(Cam, TransitionParms);
 
 	Cam->SetTarget(ViewedActor);
 }

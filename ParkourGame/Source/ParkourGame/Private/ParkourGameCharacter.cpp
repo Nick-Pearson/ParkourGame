@@ -37,6 +37,7 @@
 #include "EngineUtils.h"
 #include "AI/Navigation/NavigationSystem.h"
 #include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
+#include "TimerManager.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AParkourGameCharacter
@@ -181,8 +182,8 @@ void AParkourGameCharacter::BeginPlay()
     GameManager->OnGameOver.AddDynamic(this, &AParkourGameCharacter::OnGameOver);
   }
 
-  APlayerController* Controller = Cast<APlayerController>(GetController());
-  AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(Controller ? Controller->GetHUD() : nullptr);
+  APlayerController* ControllerPtr = Cast<APlayerController>(GetController());
+  AParkourGameHUD* HUDptr = Cast<AParkourGameHUD>(ControllerPtr ? ControllerPtr->GetHUD() : nullptr);
   if (HUDptr)
     HUDptr->InitialisePlayerUI();
 }
@@ -291,8 +292,8 @@ void AParkourGameCharacter::PlayStandUpAnimation()
   const float PlayRate = 2.0f;
   PlayAnimMontage(Row->Montage, PlayRate);
  
-  if(AController* Controller = GetController())
-    Controller->SetIgnoreMoveInput(true);
+  if(AController* ControllerPtr = GetController())
+    ControllerPtr->SetIgnoreMoveInput(true);
 
   EnableJumping(false);
 
@@ -324,8 +325,8 @@ FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction)
 
 void AParkourGameCharacter::ResetStandupAnim()
 {
-  if (AController* Controller = GetController())
-    Controller->SetIgnoreMoveInput(false);
+  if (AController* ControllerPtr = GetController())
+    ControllerPtr->SetIgnoreMoveInput(false);
 
   EnableJumping(true);
 
@@ -493,8 +494,8 @@ void AParkourGameCharacter::Roll_Start() {
 	// TODO add a check for distance from floor so you can roll on ramps
 	UE_LOG(LogTemp, Warning, TEXT("time to floor is: %f"), Time_to_Floor());
 	if (GetVelocity().Z != 0.0f && !isFlipping && !isRolling && FMath::Abs(Time_to_Floor()) < 0.4f) {
-		if (AController* Controller = GetController())
-			Controller->SetIgnoreMoveInput(true);
+		if (AController* ControllerPtr = GetController())
+      ControllerPtr->SetIgnoreMoveInput(true);
 		EnableJumping(false);
 		isFlipping = true;
 		FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
@@ -520,8 +521,8 @@ void AParkourGameCharacter::Roll_Start() {
 		USkeletalMeshComponent* mesh = GetSkeletalMesh();
 		FRotator rotator(0, -90, 0);
 		mesh->SetRelativeRotation(rotator);
-		if (AController* Controller = GetController())
-			Controller->SetIgnoreMoveInput(false);
+		if (AController* ControllerPtr = GetController())
+      ControllerPtr->SetIgnoreMoveInput(false);
 		EnableJumping(true);
 		CanRollFromTackle = false;
 	}
@@ -969,6 +970,38 @@ void AParkourGameCharacter::OnRagdollEvent()
   Server_DropBall(EHandSideEnum::HS_Right);
 }
 
+bool AParkourGameCharacter::CreateKeyframe_Implementation(FPlayerKeyframe& Keyframe)
+{
+  Keyframe.Velocity = GetVelocity();
+  Keyframe.IsFullRagdoll = m_RagdollState[(int32)EBodyPart::MAX] > 0;
+  Keyframe.IsInAir = !GetCharacterMovement()->IsMovingOnGround();
+  return true;
+}
+
+bool AParkourGameCharacter::ReplayKeyframe_Implementation(const FPlayerKeyframe& Keyframe)
+{
+  if (Keyframe.IsFullRagdoll != m_RagdollState[(int32)EBodyPart::MAX])
+  {
+    m_RagdollState[(int32)EBodyPart::MAX] = Keyframe.IsFullRagdoll ? 1 : 0;
+    OnRep_RagdollState();
+  }
+
+  Replay_Velocity = Keyframe.Velocity;
+  Replay_IsInAir = Keyframe.IsInAir;
+
+  return true;
+}
+
+void AParkourGameCharacter::InitialiseReplayActor_Implementation(AParkourGameCharacter* ReplayActor)
+{
+  if (!ReplayActor) return;
+
+  // copy team materials and name
+  ReplayActor->GetSkeletalMesh()->SetMaterial(0, GetSkeletalMesh()->GetMaterial(0));
+  ReplayActor->GetHat()->SetMaterial(0, GetHat()->GetMaterial(0));
+  ReplayActor->GetPlayerNameTag()->SetText(FText::FromString(ParkourPlayerState->PlayerName));
+}
+
 void AParkourGameCharacter::ResetAFKTimer()
 {
 #if !WITH_EDITOR
@@ -1248,6 +1281,8 @@ void AParkourGameCharacter::OnJoinedTeam(AMiniGameBase* Game, AParkourGameCharac
 
 void AParkourGameCharacter::OnGameOver(AMiniGameBase* Game, EMiniGameEndReason Reason)
 {
+  if (IsReplayActor) return;
+
   GetSkeletalMesh()->SetMaterial(0, DefaultMaterial);
   Hat->SetMaterial(0, DefaultHatMaterial);
 }

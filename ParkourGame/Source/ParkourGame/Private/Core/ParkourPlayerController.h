@@ -21,6 +21,9 @@ public:
   void Server_StartGame(TSubclassOf<AMiniGameBase> GameClass);
 
   UFUNCTION(Server, Unreliable, WithValidation)
+  void Server_StartRandomGame();
+
+  UFUNCTION(Server, Unreliable, WithValidation)
   void Server_EndCurrentGame();
 
   UFUNCTION(NetMulticast, Unreliable)

@@ -4,17 +4,29 @@
 #include "GameFramework/Info.h"
 #include "ReplayManager.generated.h"
 
+USTRUCT(BlueprintType)
 struct FPlayerKeyframe
 {
+  GENERATED_BODY()
+
+public:
+
 	// World time in seconds
 	float WorldTime;
 
 	FTransform RootTransform;
 
+  FVector Velocity;
+
+  int32 IsFullRagdoll;
+
+  bool IsInAir;
+
 	static void LinearInterpolate(const FPlayerKeyframe& A, const FPlayerKeyframe& B, float Alpha, FPlayerKeyframe& Result);
 };
 
 class AParkourGameCharacter;
+class AGameModeBase;
 
 struct FPlayerReplayData
 {
@@ -23,7 +35,7 @@ struct FPlayerReplayData
 	TWeakObjectPtr<AParkourGameCharacter> PlayerPawn;
 
 	// actor replaying the player
-	TWeakObjectPtr<APawn> ReplayActor;
+	TWeakObjectPtr<AParkourGameCharacter> ReplayActor;
 
 	// index of the start of the replay keyframes
 	int32 CurrentKeyframeIdx = 0;
@@ -72,9 +84,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Replay Manager", meta = (ClampMin = "1.0"))
 	float MaxBufferSize = 10.0f;
 
-	UPROPERTY(EditAnywhere, Category = "Replay Manager")
-	TSubclassOf<APawn> ReplayActorClass;
-
   UPROPERTY(BlueprintAssignable, Category = "Replay Manager")
   FReplayEvent OnReplayStarted;
   
@@ -96,7 +105,7 @@ private:
 	void OnPlayerLogout(AGameModeBase* GameMode, AController* Exiting);
 
 	void RecordKeyframe(FPlayerReplayData& Player, float WorldTime);
-	void CreateKeyframe(const APawn& Player, FPlayerKeyframe& outKeyframe, float WorldTime);
+	void CreateKeyframe(AParkourGameCharacter* Player, FPlayerKeyframe& outKeyframe, float WorldTime);
 
 	void UpdateReplay(float WorldTime);
 	void UpdatePlayerReplay(FPlayerReplayData& Player, float ReplayTime);

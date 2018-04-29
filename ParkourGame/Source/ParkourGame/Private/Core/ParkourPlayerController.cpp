@@ -14,8 +14,22 @@ void AParkourPlayerController::Server_StartGame_Implementation(TSubclassOf<AMini
   AMiniGameManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AMiniGameManager>(GetWorld());
 
   if (!Mgr) return;
-
+  
   Mgr->CreateGame(GameClass);
+}
+
+bool AParkourPlayerController::Server_StartRandomGame_Validate()
+{
+  return true;
+}
+
+void AParkourPlayerController::Server_StartRandomGame_Implementation()
+{
+  AMiniGameManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AMiniGameManager>(GetWorld());
+
+  if (!Mgr) return;
+
+  Mgr->CreateRandomGame();
 }
 
 bool AParkourPlayerController::Server_EndCurrentGame_Validate()

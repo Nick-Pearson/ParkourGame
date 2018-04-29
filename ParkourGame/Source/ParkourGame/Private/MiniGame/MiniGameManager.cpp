@@ -1,6 +1,7 @@
 #include "MiniGameManager.h"
 
 #include "../Core/ParkourGameState.h"
+#include "../Core/ParkourPlayerController.h"
 
 #include "../UI/ParkourGameHUD.h"
 #include "../UI/ToasterInterface.h"
@@ -14,8 +15,9 @@
 
 static void cmd_CreateRandom(UWorld* World)
 {
-	AMiniGameManager* Manager = USingletonHelperLibrary::GetMiniGameManager(World);
-	if (Manager) Manager->CreateRandomGame();
+  AParkourPlayerController* PlayerCtlr = Cast<AParkourPlayerController>(World->GetFirstPlayerController());
+  if (PlayerCtlr) PlayerCtlr->Server_StartRandomGame();
+
 }
 
 FAutoConsoleCommandWithWorld CreateGameCmd(
