@@ -2,7 +2,6 @@
 
 #include "SpectatorCameraActor.h"
 #include "../ParkourGameCharacter.h"
-#include "../Utils/SingletonHelper.h"
 #include "../MiniGame/MiniGameManager.h"
 #include "../UI/ParkourGameHUD.h"
 
@@ -66,17 +65,27 @@ void AParkourSpectator::BeginPlay()
 
   FParkourSpectatorBroadcasts::StartActionReplay.AddUObject(this, &AParkourSpectator::StartPlayingReplay);
 
-  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+  AReplayManager* ReplayMgr = SingletonHelper.GetSingletonObject<AReplayManager>(WorldPtr);
 
-  if (Mgr)
+  if (ReplayMgr)
   {
-    Mgr->OnReplayStarted.AddDynamic(this, &AParkourSpectator::TargetNewPlayer);
-    Mgr->OnReplayEnded.AddDynamic(this, &AParkourSpectator::TargetNewPlayer);
+    ReplayMgr->OnReplayStarted.AddDynamic(this, &AParkourSpectator::TargetNewPlayer);
+    ReplayMgr->OnReplayEnded.AddDynamic(this, &AParkourSpectator::TargetNewPlayer);
+  }
+
+  AMiniGameManager* MinigameMgr = SingletonHelper.GetSingletonObject<AMiniGameManager>(WorldPtr);
+
+  if (MinigameMgr)
+  {
+    MinigameMgr->OnTeamScoreUpdated.AddDynamic(this, &AParkourSpectator::TeamScoreUpdated);
   }
 }
 
-void AParkourSpectator::SetViewedActor(const AActor* NewActor)
+void AParkourSpectator::SetViewedActor(AActor* NewActor)
 {
+  GetWorld()->GetTimerManager().ClearTimer(TargetChangeHandle);
+  GetWorld()->GetTimerManager().SetTimer(TargetChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::TargetNewPlayer), TargetChangeTime, false);
+
 	if (NewActor == ViewedActor) return;
 
 	ViewedActor = NewActor;
@@ -85,34 +94,59 @@ void AParkourSpectator::SetViewedActor(const AActor* NewActor)
 
 void AParkourSpectator::TargetNewPlayer()
 {
-  if (!TargetChangeHandle.IsValid()) return;
+  if (!IsAutoCam) return;
 
-	// we have to construct this stupid extra list as the raw pawn list container is not exposed
-	TArray<const AActor*> ValidTargets;
+	AActor* NewTarget = nullptr;
 
-  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+  AReplayManager* Mgr = SingletonHelper.GetSingletonObject<AReplayManager>(GetWorld());
 
   if (Mgr && Mgr->IsReplaying())
   {
-    Mgr->GetAllReplayActors(ValidTargets);
+    if (AActor* Targ = ReplayTarget.Get())
+    {
+      NewTarget = Mgr->GetReplayActorForRealActor(Targ);
+    }
+    else
+    {
+      // pick any
+      TArray<AParkourGameCharacter*> ValidTargets;
+      Mgr->GetAllReplayPlayers(ValidTargets);
+
+      if (ValidTargets.IsValidIndex(0)) NewTarget = ValidTargets[0];
+    }
   }
   else
   {
+    float CurrentTargetSpeed = -1.0f;
+
     for (auto it = GetWorld()->GetPawnIterator(); it; ++it)
     {
-      if (const AParkourGameCharacter* Target = Cast<AParkourGameCharacter>(*it))
-        ValidTargets.Add(Target);
+      if (AParkourGameCharacter* Target = Cast<AParkourGameCharacter>(*it))
+      {
+        if (Target->HasBall())
+        {
+          NewTarget = Target;
+          break;
+        }
+        
+        const float TargetSpeed = Target->GetVelocity().SizeSquared();
+
+        if (TargetSpeed > CurrentTargetSpeed)
+        {
+          NewTarget = Target;
+          CurrentTargetSpeed = TargetSpeed;
+        }
+      }
     }
   }
 
-	if (ValidTargets.Num() == 0) return;
-
-	SetViewedActor(ValidTargets[FMath::RandHelper(ValidTargets.Num())]);
+  if(NewTarget)
+	  SetViewedActor(NewTarget);
 }
 
 void AParkourSpectator::BeginAutoCam()
 {
-  GetWorld()->GetTimerManager().SetTimer(TargetChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::TargetNewPlayer), TargetChangeTime, true);
+  IsAutoCam = true;
   TargetNewPlayer();
 }
 
@@ -144,13 +178,24 @@ void AParkourSpectator::OpenControls()
   InitialiseActionReplay();
 }
 
+void AParkourSpectator::TeamScoreUpdated(AMiniGameBase* Game, int32 TeamID)
+{
+  if (!Game || Game->GetScore(TeamID) == 0 || Role != ENetRole::ROLE_AutonomousProxy) return;
+
+  // wait a small time before starting the replay so that the score moment is in the middle of the playback
+  FTimerHandle Handle;
+  GetWorld()->GetTimerManager().SetTimer(Handle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::StartPlayingReplay, GetWorld()), 4.0f, false);
+
+  ReplayTarget = Game->GetLastScoringPlayer(TeamID);
+}
+
 void AParkourSpectator::InitialiseActionReplay()
 {
   UWorld* WorldPtr = GetWorld();
 
   if (!WorldPtr) return;
 
-  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+  AReplayManager* Mgr = SingletonHelper.Static_GetSingletonObject<AReplayManager>(GetWorld());
 
   if (Mgr)
   {
@@ -158,32 +203,73 @@ void AParkourSpectator::InitialiseActionReplay()
   }
 }
 
-void AParkourSpectator::StartPlayingReplay()
+void AParkourSpectator::StartPlayingReplay(UWorld* World)
 {
-  AReplayManager* Mgr = FSingletonHelper::Static_GetSingletonObject<AReplayManager>(GetWorld());
+#if WITH_EDITOR
+  if (World != GetWorld()) return;
+#endif
+  AReplayManager* Mgr = SingletonHelper.GetSingletonObject<AReplayManager>(GetWorld());
 
   if (!Mgr) return;
 
-  Mgr->StartReplay(Mgr->MaxBufferSize, 0.5f);
+  Mgr->StartReplay(8.0f, 0.5f);
 }
 
 void AParkourSpectator::SwitchCamera()
 {
+  GetWorld()->GetTimerManager().ClearTimer(CameraChangeHandle);
+  GetWorld()->GetTimerManager().SetTimer(CameraChangeHandle, FTimerDelegate::CreateUObject(this, &AParkourSpectator::SwitchCamera), CameraChangeTime, false);
+
 	ASpectatorCameraActor* Cam = GetBestCamera();
 
-	if (!Cam) return;
+  bool usePlayerView = FMath::RandRange(0, 5) == 0;
 
-	if (CurrentCamera) CurrentCamera->SetTarget(nullptr);
+  if (!Cam)
+  {
+    usePlayerView = true;
+  }
+
+  if (CurrentCamera)
+  {
+    CurrentCamera->SetTarget(nullptr);
+
+    if (TempCamera)
+    {
+      CurrentCamera->Destroy();
+    }
+  }
+  
+  TempCamera = false;
+
+  if (usePlayerView && ViewedActor)
+  {
+    Cam = GetWorld()->SpawnActor<ASpectatorCameraActor>(SpectatorCameraClass.Get());
+
+    if (Cam)
+    {
+      TempCamera = true;
+      Cam->AttachToActor(ViewedActor, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+      Cam->SetActorRelativeLocation(FVector(400.0f, 0.0f, 0.0f));
+    }
+    else
+    {
+      UE_LOG(LogTemp, Warning, TEXT("UNABLE TO ATTACH TO PLAYER"));
+    }
+  }
 
 	CurrentCamera = Cam;
+  UE_LOG(LogTemp, Warning, TEXT("SWITCHING CAMERA TO %s"), CurrentCamera ? *CurrentCamera->GetName() : TEXT("nullptr"));
+
+  if (!Cam) return;
 
 	FViewTargetTransitionParams TransitionParms;
 	TransitionParms.BlendTime = 0.0f;
 
 	if(APlayerController* ControllerPtr = Cast<APlayerController>(GetController()))
     ControllerPtr->SetViewTarget(Cam, TransitionParms);
-
-	Cam->SetTarget(ViewedActor);
+  
+  Cam->OwningSpectator = this;
+  Cam->SetTarget(ViewedActor);
 }
 
 ASpectatorCameraActor* AParkourSpectator::GetBestCamera() const
@@ -194,8 +280,19 @@ ASpectatorCameraActor* AParkourSpectator::GetBestCamera() const
 	float SqrdDist = FLT_MAX;
 
 	FVector ViewedActorLoc = ViewedActor->GetActorLocation();
+  
+  TArray<ASpectatorCameraActor*> ValidCameras;
+  for (ASpectatorCameraActor* QryCam : AllCameras)
+  {
+    //TODO: Do a visibility check with the actor
+    const float Dist = (QryCam->GetActorLocation() - ViewedActorLoc).Size();
+    if (Dist < QryCam->SwitchCameraDistance)
+    {
+      ValidCameras.Add(QryCam);
+    }
+  }
 
-	for (ASpectatorCameraActor* QryCam : AllCameras)
+	for (ASpectatorCameraActor* QryCam : ValidCameras)
 	{
 		float Dist = (QryCam->GetActorLocation() - ViewedActorLoc).SizeSquared();
 		if (!Cam || Dist < SqrdDist)

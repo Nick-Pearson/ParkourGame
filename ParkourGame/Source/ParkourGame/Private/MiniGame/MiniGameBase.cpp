@@ -51,7 +51,7 @@ bool AMiniGameBase::PlayerJoinGame(AParkourGameCharacter* Player)
 		return false;
 	}
 
-	SelectedTeam->PlayersInTeam.Add(Player);
+	SelectedTeam->PlayersInTeam.Add(FPlayerInTeam(Player));
 
 	//check if we are full
 	if (AutoStartWhenTeamsFull &&
@@ -68,19 +68,20 @@ void AMiniGameBase::PlayerLeaveGame(AParkourGameCharacter* Player)
 	if (!Player || !HasAuthority()) return;
 
 	// ensure the player is already in the game
-	TArray<AParkourGameCharacter*> AllPlayers;
-	GetAllPlayers(AllPlayers);
+  int32 TeamID = GetTeamFromPlayer(Player);
+  
+	if (TeamID == INDEX_NONE) return;
 
-	if (!AllPlayers.Contains(Player)) return;
-
-	int32 TeamID = GetTeamFromPlayer(Player);
 	FMiniGameTeam Team = GetTeamFromID(TeamID);
-	Team.PlayersInTeam.Remove(Player);
+  int32 RemoveIdx = Team.PlayersInTeam.FindLastByPredicate([&](const FPlayerInTeam& Plr) {
+    return Plr.PlayerPtr == Player;
+  });
+  if (RemoveIdx != INDEX_NONE) Team.PlayersInTeam.RemoveAtSwap(RemoveIdx);
 
 	//check if Team is empty
 	if (Team.PlayersInTeam.Num() == 0)
 	{
-		//END GAME todo
+    RequestEndGame(EMiniGameEndReason::PlayersLeft);
 	}
 
 	return;
@@ -223,9 +224,9 @@ void AMiniGameBase::GetAllPlayers(TArray<AParkourGameCharacter*>& AllPlayers) co
 	{
 		AllPlayers.Reserve(AllPlayers.Num() + Team.PlayersInTeam.Num());
 
-		for (const TWeakObjectPtr<AParkourGameCharacter>& PlayerWeakPtr : Team.PlayersInTeam)
+		for (const FPlayerInTeam& Plr : Team.PlayersInTeam)
 		{
-			if (AParkourGameCharacter* Player = PlayerWeakPtr.Get())
+      if (AParkourGameCharacter* Player = Plr.PlayerPtr.Get())
 				AllPlayers.Add(Player);
 		}
 	}
@@ -239,25 +240,27 @@ void AMiniGameBase::GetAllPlayersInTeam(int32 TeamID, TArray<AParkourGameCharact
 
 	if (!FoundTeam) return;
 
-	for (const TWeakObjectPtr<AParkourGameCharacter>& PlayerWeakPtr : FoundTeam->PlayersInTeam)
+	for (const FPlayerInTeam& Plr : FoundTeam->PlayersInTeam)
 	{
-		if (AParkourGameCharacter* Player = PlayerWeakPtr.Get())
+		if (AParkourGameCharacter* Player = Plr.PlayerPtr.Get())
 			Players.Add(Player);
 	}
 }
 
 int32 AMiniGameBase::GetTeamFromPlayer(AParkourGameCharacter* Player) const
 {
+  if (!Player) return INDEX_NONE;
+
 	for (const FMiniGameTeam& Team : TeamData)
 	{
-		for (const TWeakObjectPtr<AParkourGameCharacter>& WeakPlayer : Team.PlayersInTeam)
+		for (const FPlayerInTeam& Plr : Team.PlayersInTeam)
 		{
-			if (WeakPlayer == Player) return Team.TeamID;
+			if (Plr.PlayerPtr == Player) return Team.TeamID;
 		}
 	}
 
 	UE_LOG(ParkourGame, Warning, TEXT("[MinigameBase] Attempted to get the team from a player that is not in this game"));
-	return 0;
+	return INDEX_NONE;
 }
 
 FMiniGameTeam AMiniGameBase::GetTeamFromID(int32 TeamID) const
@@ -275,7 +278,7 @@ FMiniGameTeam AMiniGameBase::GetTeamFromID(int32 TeamID) const
 	return ErrTeam;
 }
 
-void AMiniGameBase::ModifyScore(int32 TeamID, int32 Change, int32& NewScore)
+void AMiniGameBase::ModifyScore(int32 TeamID, int32 Change, AParkourGameCharacter* Scorer, int32& NewScore)
 {
 	FMiniGameTeam* TeamPtr = TeamData.FindByPredicate([&](const FMiniGameTeam& queryTeam) {
 		return queryTeam.TeamID == TeamID;
@@ -286,6 +289,35 @@ void AMiniGameBase::ModifyScore(int32 TeamID, int32 Change, int32& NewScore)
 	TeamPtr->Score += Change;
 	TeamPtr->Score = FMath::Max(0, TeamPtr->Score);
 	NewScore = TeamPtr->Score;
+
+  int32 ScorerTeamID = GetTeamFromPlayer(Scorer);
+
+  if (ScorerTeamID != INDEX_NONE)
+  {
+    //handle the own goal case
+    if (ScorerTeamID != TeamID)
+    {
+      FMiniGameTeam* ScorerTeamPtr = TeamData.FindByPredicate([&](const FMiniGameTeam& queryTeam) {
+        return queryTeam.TeamID == ScorerTeamID;
+      });
+
+      FPlayerInTeam* PlayerData = ScorerTeamPtr->PlayersInTeam.FindByPredicate([&](const FPlayerInTeam& Plr) {
+        return Plr.PlayerPtr == Scorer;
+      });
+
+      PlayerData->OwnGoals += Change;
+    }
+    else
+    {
+      FPlayerInTeam* PlayerData = TeamPtr->PlayersInTeam.FindByPredicate([&](const FPlayerInTeam& Plr) {
+        return Plr.PlayerPtr == Scorer;
+      });
+
+      PlayerData->Goals += Change;
+    }
+  }
+  
+  TeamPtr->LastScoringPlayer = Scorer;
 
 	CheckWinCondition();
 }
@@ -299,6 +331,16 @@ int32 AMiniGameBase::GetScore(int32 TeamID) const
 	if (!TeamPtr) return 0;
 
 	return TeamPtr->Score;
+}
+
+AParkourGameCharacter* AMiniGameBase::GetLastScoringPlayer(int32 TeamID) const
+{
+  const FMiniGameTeam* ScorerTeamPtr = TeamData.FindByPredicate([&](const FMiniGameTeam& queryTeam) {
+    return queryTeam.TeamID == TeamID;
+  });
+
+  if (!ScorerTeamPtr) return nullptr;
+  return ScorerTeamPtr->LastScoringPlayer.Get();
 }
 
 void AMiniGameBase::OnRep_State()
@@ -332,10 +374,10 @@ void AMiniGameBase::OnRep_TeamData()
 			// no existing team data so all players are new players
 			GameManager->OnTeamScoreUpdated.Broadcast(this, Team.TeamID);
 
-			for (const TWeakObjectPtr<AParkourGameCharacter>& player : Team.PlayersInTeam)
+			for (const FPlayerInTeam& player : Team.PlayersInTeam)
 			{
 				// player only in new array - they have joined the game
-				GameManager->OnPlayerJoinedTeam.Broadcast(this, player.Get(), Team.TeamID);
+				GameManager->OnPlayerJoinedTeam.Broadcast(this, player.PlayerPtr.Get(), Team.TeamID);
 			}
 
 			continue;
@@ -345,12 +387,15 @@ void AMiniGameBase::OnRep_TeamData()
 		if (oldTeam->Score != Team.Score) GameManager->OnTeamScoreUpdated.Broadcast(this, Team.TeamID);
 
 		//compare the two lists of players
-		TArray<TWeakObjectPtr<AParkourGameCharacter>> mutable_PlayersInTeam = Team.PlayersInTeam;
+		TArray<FPlayerInTeam> mutable_PlayersInTeam = Team.PlayersInTeam;
 
-		for (const TWeakObjectPtr<AParkourGameCharacter>& player : oldTeam->PlayersInTeam)
+		for (const FPlayerInTeam& player : oldTeam->PlayersInTeam)
 		{
-			int32 foundIdx;
-			if (mutable_PlayersInTeam.FindLast(player, foundIdx))
+      int32 foundIdx = mutable_PlayersInTeam.FindLastByPredicate([&](const FPlayerInTeam& plr) {
+        return plr.PlayerPtr == player.PlayerPtr;
+      });
+
+			if (foundIdx != INDEX_NONE)
 			{
 				// The player was in both arrays - nothing has changed
 				mutable_PlayersInTeam.RemoveAt(foundIdx);
@@ -358,14 +403,14 @@ void AMiniGameBase::OnRep_TeamData()
 			else
 			{
 				// player only in old array - they have left the game
-				GameManager->OnPlayerLeftTeam.Broadcast(this, player.Get(), Team.TeamID);
+				GameManager->OnPlayerLeftTeam.Broadcast(this, player.PlayerPtr.Get(), Team.TeamID);
 			}
 		}
 
-		for (const TWeakObjectPtr<AParkourGameCharacter>& player : mutable_PlayersInTeam)
+		for (const FPlayerInTeam& player : mutable_PlayersInTeam)
 		{
 			// player only in new array - they have joined the game
-			GameManager->OnPlayerJoinedTeam.Broadcast(this, player.Get(), Team.TeamID);
+			GameManager->OnPlayerJoinedTeam.Broadcast(this, player.PlayerPtr.Get(), Team.TeamID);
 		}
 	}
 

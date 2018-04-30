@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "../Utils/SingletonHelper.h"
 #include "GameFramework/SpectatorPawn.h"
 #include "ParkourSpectator.generated.h"
 
@@ -10,7 +11,7 @@ class ASpectatorCameraActor;
 // broadcast these from NetMulticast events
 namespace FParkourSpectatorBroadcasts
 {
-  DECLARE_MULTICAST_DELEGATE(FStartActionReplayEvent);
+  DECLARE_MULTICAST_DELEGATE_OneParam(FStartActionReplayEvent, UWorld*);
 
   extern FStartActionReplayEvent StartActionReplay;
 };
@@ -31,11 +32,14 @@ public:
 	FORCEINLINE const AActor* GetViewedActor() { return ViewedActor; }
 	
 	UFUNCTION(BlueprintCallable, Category = "ParkourSpectator")
-	void SetViewedActor(const AActor* NewActor);
+	void SetViewedActor(AActor* NewActor);
 
-	// This logic randomly switches between players every set 10 seconds TODO: Add to this logic for when interesting events occur
+	// This logic randomly switches between players every set 10 seconds
 	float TargetChangeTime = 10.0f;
 	FTimerHandle TargetChangeHandle;
+
+  float CameraChangeTime = 4.0f;
+  FTimerHandle CameraChangeHandle;
 
   UFUNCTION()
 	void TargetNewPlayer();
@@ -54,22 +58,39 @@ public:
 
   void OpenControls();
 
+  void SwitchCamera();
+
+public:
+
+  UPROPERTY(EditAnywhere, Category = "ParkourSpectator")
+  TSubclassOf<ASpectatorCameraActor> SpectatorCameraClass;
+
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ParkourSpectator")
+  bool IsAutoCam = false;
+
 private:
 
-  void InitialiseActionReplay();
-  void StartPlayingReplay();
+  UFUNCTION()
+  void TeamScoreUpdated(AMiniGameBase* Game, int32 TeamID);
 
-	void SwitchCamera();
+  void InitialiseActionReplay();
+  void StartPlayingReplay(UWorld* World);
 
 	ASpectatorCameraActor* GetBestCamera() const;
 
 	UPROPERTY(BlueprintReadOnly, Category = "ParkourSpectator", meta = (AllowPrivateAccess = "true"))
-	const AActor* ViewedActor;
+	AActor* ViewedActor = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "ParkourSpectator", meta = (AllowPrivateAccess = "true"))
-	ASpectatorCameraActor* CurrentCamera;
+	ASpectatorCameraActor* CurrentCamera = nullptr;
+
+  // set to trye when the current camera should be destoryed after use
+  bool TempCamera = false;
+
+  TWeakObjectPtr<AActor> ReplayTarget;
 
 	UPROPERTY(Transient)
 	TArray<ASpectatorCameraActor*> AllCameras;
 
+  FSingletonHelper SingletonHelper;
 };

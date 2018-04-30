@@ -32,6 +32,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "SpectatorCamera")
 	float MinFOVDistance = 2000.0f;
 
+  UPROPERTY(EditAnywhere, Category = "SpectatorCamera")
+  float SwitchCameraDistance = 2200.0f;
+
+  TWeakObjectPtr<class AParkourSpectator> OwningSpectator;
+
 private:
 
 	UPROPERTY(Transient)

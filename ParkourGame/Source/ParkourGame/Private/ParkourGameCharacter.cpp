@@ -29,6 +29,7 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerState.h"
+#include "GameFramework/GameStateBase.h"
 #include "UnrealNetwork.h"
 #include "PhysicsEngine/PhysicalAnimationComponent.h"
 #include "Engine/DataTable.h"
@@ -298,7 +299,7 @@ void AParkourGameCharacter::PlayStandUpAnimation()
   EnableJumping(false);
 
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, Row->Montage->GetSectionLength(0) / (Row->Montage->RateScale * PlayRate)), false);
+  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, (Row->Montage->GetSectionLength(0) / (Row->Montage->RateScale * PlayRate)) - Row->Montage->BlendOut.GetBlendTime()), false);
 }
 
 FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction) const
@@ -1233,7 +1234,14 @@ bool AParkourGameCharacter::Server_BecomeSpectator_Validate()
 void AParkourGameCharacter::Server_BecomeSpectator_Implementation()
 {
 #if WITH_EDITOR
-	AParkourSpectator* SpecatorPawn = GetWorld()->SpawnActor<AParkourSpectator>(AParkourSpectator::StaticClass(), GetTransform());
+  UClass* SpectatorClass = AParkourSpectator::StaticClass();
+
+  if (AGameStateBase const* const GameState = GetWorld()->GetGameState())
+  {
+    SpectatorClass = GameState->SpectatorClass;
+  }
+
+	AParkourSpectator* SpecatorPawn = GetWorld()->SpawnActor<AParkourSpectator>(SpectatorClass, GetTransform());
 
 	GetController()->Possess(SpecatorPawn);
 	Destroy();

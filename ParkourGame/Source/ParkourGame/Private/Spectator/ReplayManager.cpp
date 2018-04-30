@@ -147,15 +147,26 @@ void AReplayManager::StopReplay(bool DestroyActors /*= true*/)
 	}
 }
 
-void AReplayManager::GetAllReplayActors(TArray<const AActor*>& outActors) const
+void AReplayManager::GetAllReplayPlayers(TArray<AParkourGameCharacter*>& outActors) const
 {
   if (!bIsReplaying) return;
 
   for (const FPlayerReplayData& Player : m_KeyframeData)
   {
-    if (AActor* ReplayActorPtr = Player.ReplayActor.Get())
+    if (AParkourGameCharacter* ReplayActorPtr = Player.ReplayActor.Get())
       outActors.Add(ReplayActorPtr);
   }
+}
+
+AActor* AReplayManager::GetReplayActorForRealActor(AActor* RealActor) const
+{
+  const FPlayerReplayData* PlayerDataPtr = m_KeyframeData.FindByPredicate([&](const FPlayerReplayData& Key) {
+    return Key.PlayerPawn == RealActor;
+  });
+
+  if (PlayerDataPtr) return PlayerDataPtr->ReplayActor.Get();
+
+  return nullptr;
 }
 
 void AReplayManager::StartRecording()

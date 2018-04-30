@@ -50,6 +50,27 @@ public:
 
 };
 
+USTRUCT()
+struct FPlayerInTeam
+{
+  GENERATED_BODY()
+public:
+
+  FPlayerInTeam(AParkourGameCharacter* Player = nullptr) : 
+    PlayerPtr(Player), Goals(0), OwnGoals(0)
+  {}
+
+  UPROPERTY(Transient)
+  TWeakObjectPtr<AParkourGameCharacter> PlayerPtr;
+
+  UPROPERTY(Transient)
+  int32 Goals = 0;
+
+  UPROPERTY(Transient)
+  int32 OwnGoals = 0;
+
+};
+
 USTRUCT(BlueprintType)
 struct FMiniGameTeam
 {
@@ -61,7 +82,10 @@ public:
 	int32 TeamID;
 
 	UPROPERTY(Transient)
-	TArray<TWeakObjectPtr<AParkourGameCharacter>> PlayersInTeam;
+	TArray<FPlayerInTeam> PlayersInTeam;
+
+  UPROPERTY(Transient)
+  TWeakObjectPtr<AParkourGameCharacter> LastScoringPlayer;
 
 	UPROPERTY(BlueprintReadOnly, Category = "MinigameTeam")
 	int32 Score;
@@ -156,10 +180,13 @@ public:
 	FMiniGameTeam GetTeamFromID(int32 TeamID) const;
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
-	void ModifyScore(int32 TeamID, int32 Change, int32& NewScore);
+	void ModifyScore(int32 TeamID, int32 Change, AParkourGameCharacter* Scorer, int32& NewScore);
 
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	int32 GetScore(int32 TeamID) const;
+
+  UFUNCTION(BlueprintCallable, Category = "MiniGame")
+  AParkourGameCharacter* GetLastScoringPlayer(int32 TeamID) const;
 
   FORCEINLINE AMiniGameManager* GetManager() const { return GameManager; }
 

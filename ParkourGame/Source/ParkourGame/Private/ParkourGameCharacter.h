@@ -361,9 +361,6 @@ protected:
   UFUNCTION(BlueprintImplementableEvent)
   void DropBall(AActor* Ball, EHandSideEnum Hand);
 
-  UFUNCTION(BlueprintPure, Category = "BallHandling")
-  bool HasBall() const;
-
   UFUNCTION()
   void OnRagdollEvent();
   
@@ -507,6 +504,9 @@ public:
 
   UFUNCTION(BlueprintNativeEvent, Category = "Replay")
   void InitialiseReplayActor(AParkourGameCharacter* ReplayActor);
+  
+  UFUNCTION(BlueprintPure, Category = "BallHandling")
+  bool HasBall() const;
 
 private:
 	AParkourPlayerController* GetParkourPlayerController() const;

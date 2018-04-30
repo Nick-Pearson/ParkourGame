@@ -48,5 +48,5 @@ void AParkourPlayerController::Server_EndCurrentGame_Implementation()
 
 void AParkourPlayerController::Net_StartReplay_Implementation()
 {
-  FParkourSpectatorBroadcasts::StartActionReplay.Broadcast();
+  FParkourSpectatorBroadcasts::StartActionReplay.Broadcast(GetWorld());
 }

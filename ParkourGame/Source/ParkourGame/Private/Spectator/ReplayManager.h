@@ -74,7 +74,10 @@ public:
   FORCEINLINE bool IsReplaying() const { return bIsReplaying; }
 
   // get all actors involved in a replay
-  void GetAllReplayActors(TArray<const AActor*>& outActors) const;
+  void GetAllReplayPlayers(TArray<AParkourGameCharacter*>& outActors) const;
+
+  // get the replay actor for a particular real actor
+  AActor* GetReplayActorForRealActor(AActor* RealActor) const;
 
 public:
 
