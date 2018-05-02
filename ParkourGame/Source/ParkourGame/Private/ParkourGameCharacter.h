@@ -240,11 +240,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
-    float GetUpDelay = 0.84f;
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+  float GetUpDelay = 1.2f;
   
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
-	float StopRollingDelay = 1.0f;
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+  float RollDuration = 0.9f;
+
+  // time after ragdolling from a fall when you can use roll to recover faster
+  UPROPERTY(EditAnywhere, Category = "Physics")
+  float RollRecoverWindow = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ObjectDetection")
 	float ObjectDetectionRadius = 200.0f;
@@ -278,6 +282,12 @@ public:
 
   UPROPERTY(BlueprintReadOnly, Category = "Replay")
   FVector Replay_Velocity;
+
+  UPROPERTY(BlueprintReadOnly, Category = "Physics")
+  float DefaultCapsuleRadius;
+
+  UPROPERTY(BlueprintReadOnly, Category = "Physics")
+  float DefaultCapsuleHalfHeight;
 
 	//EVENTS
 
@@ -449,24 +459,33 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	float Time_to_Floor() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Physics")
+  UFUNCTION(BlueprintCallable, Category = "Physics")
 	void Tick_Roll(float DeltaSeconds);
 
-	UFUNCTION(BlueprintCallable, Category = "Physics")
+  UFUNCTION(BlueprintCallable, Category = "Physics")
 	void Roll_Start();
 
-	UPROPERTY(BlueprintReadOnly, Category = "Physics")
+  void BeginRoll();
+  UFUNCTION(Server, WithValidation, Reliable)
+  void Server_BeginRoll();
+
+  void EnableRolling(bool Enable) { bRollingEnabled = Enable; }
+
+  // only runs on servre
+  UFUNCTION(BlueprintCallable, Category = "Physics")
+  void StartRollRecoverTimer();
+
+  UFUNCTION(BlueprintNativeEvent, Category = "Physics")
+  void OnRep_IsRolling();
+
+	UPROPERTY(BlueprintReadOnly, Category = "Physics", ReplicatedUsing = OnRep_IsRolling)
 	bool isRolling = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Physics")
+  UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Physics")
+  void OnRep_IsFlipping();
+
+	UPROPERTY(BlueprintReadWrite, Category = "Physics",  ReplicatedUsing = OnRep_IsFlipping)
 	bool isFlipping = false;
-
-
-	UPROPERTY(BlueprintReadWrite, Category = "Physics")
-	bool CanRollFromTackle = false;
-
-	class UInputComponent* playerinputcomponent_copy;
-	void testfunction(float);
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_JoinMinigame();
@@ -559,10 +578,19 @@ private:
 
   FTimerHandle AutoStandUpHandle;
 
+  FTimerHandle RollRecoverHandle;
+  bool bCanRollRecover = false;
+
+  void RollRecoverWindowEnded();
+
 	UPROPERTY(Transient)
 	class AParkourPlayerState* ParkourPlayerState;
 
   bool bCanJump = true;
   bool bWasSliding = false;
+
+  float StopRollingDelay = 1.0f;
+
+  bool bRollingEnabled = true;
 };
 

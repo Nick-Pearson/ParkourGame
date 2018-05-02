@@ -251,14 +251,9 @@ void AParkourSpectator::SwitchCamera()
       Cam->AttachToActor(ViewedActor, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
       Cam->SetActorRelativeLocation(FVector(400.0f, 0.0f, 0.0f));
     }
-    else
-    {
-      UE_LOG(LogTemp, Warning, TEXT("UNABLE TO ATTACH TO PLAYER"));
-    }
   }
 
 	CurrentCamera = Cam;
-  UE_LOG(LogTemp, Warning, TEXT("SWITCHING CAMERA TO %s"), CurrentCamera ? *CurrentCamera->GetName() : TEXT("nullptr"));
 
   if (!Cam) return;
 

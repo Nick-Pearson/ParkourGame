@@ -141,6 +141,8 @@ void AParkourGameCharacter::BeginPlay()
   GetCapsuleComponent()->SetHiddenInGame(true);
 #endif
 
+  GetCapsuleComponent()->GetUnscaledCapsuleSize(DefaultCapsuleRadius, DefaultCapsuleHalfHeight);
+
 	EnablePhysicalAnimation();
   ResetAFKTimer();
 
@@ -255,6 +257,8 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 	DOREPLIFETIME(AParkourGameCharacter, m_GripData);
   DOREPLIFETIME(AParkourGameCharacter, StandUpAnimRow);
+  DOREPLIFETIME(AParkourGameCharacter, isRolling);
+  DOREPLIFETIME(AParkourGameCharacter, isFlipping);
 }
 
 void AParkourGameCharacter::OnRep_PlayerState()
@@ -297,9 +301,10 @@ void AParkourGameCharacter::PlayStandUpAnimation()
     ControllerPtr->SetIgnoreMoveInput(true);
 
   EnableJumping(false);
+  EnableRolling(false);
 
   GetWorld()->GetTimerManager().ClearTimer(ResetStandupHandle);
-  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, (Row->Montage->GetSectionLength(0) / (Row->Montage->RateScale * PlayRate)) - Row->Montage->BlendOut.GetBlendTime()), false);
+  GetWorld()->GetTimerManager().SetTimer(ResetStandupHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::ResetStandupAnim), FMath::Max(0.1f, (Row->Montage->GetSectionLength(0) / (Row->Montage->RateScale * PlayRate)) - (0.5f * Row->Montage->BlendOut.GetBlendTime())), false);
 }
 
 FName AParkourGameCharacter::ChooseStandUpAnimation(EStandUpDirection Direction) const
@@ -330,6 +335,7 @@ void AParkourGameCharacter::ResetStandupAnim()
     ControllerPtr->SetIgnoreMoveInput(false);
 
   EnableJumping(true);
+  EnableRolling(true);
 
   if (HasAuthority())
   {
@@ -347,16 +353,22 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
   GetParkourTarget(EHandSideEnum::HS_Right, Targ);
 
 	CapsuleToRagdoll();
-	if (isRolling) {
-		if (StopRollingDelay <= 0) {
-			Roll_Start();
-			StopRollingDelay = 1.0f;
-		}
-		else{
-			MoveForward(1.0f);
-			Tick_Roll(DeltaSeconds);
-			StopRollingDelay = StopRollingDelay - DeltaSeconds;
-		}
+
+	if (isRolling) 
+  {
+		MoveForward(1.0f);
+		Tick_Roll(DeltaSeconds);
+
+    if (HasAuthority())
+    {
+      StopRollingDelay = StopRollingDelay - DeltaSeconds;
+
+      if (StopRollingDelay <= 0.0f)
+      {
+        isRolling = false;
+        OnRep_IsRolling();
+      }
+    }
 	}
 	
   // OWNING CLIENT ONLY
@@ -474,85 +486,126 @@ void AParkourGameCharacter::Jump()
 	Super::Jump();
 }
 
-void AParkourGameCharacter::testfunction(float x) {
-	//UE_LOG(LogTemp, Warning, TEXT("it works"));
+
+void AParkourGameCharacter::Roll_Start() 
+{
+  // TODO: Remove
 }
 
 
-void AParkourGameCharacter::Roll_Start() {
-	UE_LOG(LogTemp, Warning, TEXT("can roll from tackle is: %d"), CanRollFromTackle);
-	if (!CanRollFromTackle) return;
-	// initialise some variables
-	UCapsuleComponent* capsule = GetCapsuleComponent();
-	static float OutRadius;
-	static float OutHalfHeight;
-	static bool initialised;
-	if (!initialised) {
-		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
-		initialised = true;
-	}
-	// this part is how it's initialised, works with animation blueprint
-	// TODO add a check for distance from floor so you can roll on ramps
-	UE_LOG(LogTemp, Warning, TEXT("time to floor is: %f"), Time_to_Floor());
-	if (GetVelocity().Z != 0.0f && !isFlipping && !isRolling && FMath::Abs(Time_to_Floor()) < 0.4f) {
-		if (AController* ControllerPtr = GetController())
-      ControllerPtr->SetIgnoreMoveInput(true);
-		EnableJumping(false);
-		isFlipping = true;
-		FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
-		AutoStandUpHandle.Invalidate();
-		Server_StandUp(SocketLocation);
-		UE_LOG(LogTemp, Warning, TEXT("flipping is: %d"), isFlipping);
-		return;
-	}
-	// and this is the actual roll, called from the animation blueprint after the initial animation is finished, if called again while
-	// rolling will exit roll
-	if (!isRolling) {
-		playerinputcomponent_copy->BindAxis("MoveForward", this, &AParkourGameCharacter::testfunction);
-		isRolling = !isRolling;
-		capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
-		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, 40));
-		
-	}
-	else {
-		isRolling = !isRolling;
-		capsule->SetCapsuleSize(OutRadius, OutHalfHeight, true);
-		GetSkeletalMesh()->SetRelativeLocation(GetSkeletalMesh()->GetRelativeTransform().GetLocation() + FVector(0, 0, -40));
-		FVector Forward = GetActorForwardVector();
-		USkeletalMeshComponent* mesh = GetSkeletalMesh();
-		FRotator rotator(0, -90, 0);
-		mesh->SetRelativeRotation(rotator);
-		if (AController* ControllerPtr = GetController())
-      ControllerPtr->SetIgnoreMoveInput(false);
-		EnableJumping(true);
-		CanRollFromTackle = false;
-	}
+void AParkourGameCharacter::BeginRoll()
+{
+  if (isFlipping || isRolling || !bRollingEnabled) return;
+  Server_BeginRoll();
 }
 
+bool AParkourGameCharacter::Server_BeginRoll_Validate()
+{
+  return true;
+}
+
+void AParkourGameCharacter::Server_BeginRoll_Implementation()
+{
+  if (isFlipping || isRolling || !bRollingEnabled) return;
+
+  if (GetMovementComponent()->IsFalling())
+  {
+    isFlipping = true;
+    OnRep_IsFlipping();
+  }
+  else if(!IsFullRagdoll() || bCanRollRecover)
+  {
+    isRolling = true;
+    StopRollingDelay = RollDuration;
+
+    SetFullRagdoll(false);
+
+    OnRep_IsRolling();
+  }
+}
+
+void AParkourGameCharacter::StartRollRecoverTimer()
+{
+  if (!HasAuthority()) return;
+
+  bCanRollRecover = true;
+
+  FTimerManager& Mgr = GetWorld()->GetTimerManager();
+  Mgr.ClearTimer(RollRecoverHandle);
+  Mgr.SetTimer(RollRecoverHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::RollRecoverWindowEnded), RollRecoverWindow, false);
+}
+
+void AParkourGameCharacter::OnRep_IsRolling_Implementation()
+{
+  // initialise some variables
+  UCapsuleComponent* capsule = GetCapsuleComponent();
+  float OutRadius;
+  float OutHalfHeight;
+  capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
+
+  // and this is the actual roll, called from the animation blueprint after the initial animation is finished, if called again while
+  // rolling will exit roll
+  if (isRolling) 
+  {
+    //become a ball!
+    capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
+
+    if (Role == ROLE_SimulatedProxy)
+    {
+      BaseTranslationOffset = FVector(0, 0, 0.0f);
+    }
+    else
+    {
+      GetSkeletalMesh()->SetRelativeLocation(FVector(0, 0, 0.0f));
+    }
+
+    EnableJumping(false);
+  }
+  else
+  {
+    capsule->SetCapsuleSize(DefaultCapsuleRadius, DefaultCapsuleHalfHeight, true);
+
+    if (USkeletalMeshComponent* mesh = GetSkeletalMesh())
+    {
+      const FVector MeshOffset(0.0f, 0.0f, -87.0f);
+      const FRotator MeshRotation(0.0f, -90.0f, 0.0f);
+
+      if (Role == ROLE_SimulatedProxy)
+      {
+        BaseTranslationOffset = MeshOffset;
+        BaseRotationOffset = MeshRotation.Quaternion();
+      }
+      else 
+      {
+        mesh->SetRelativeLocation(MeshOffset);
+        mesh->SetRelativeRotation(MeshRotation);
+      }
+
+    }
+
+    EnableJumping(true);
+  }
+}
 
 // use this function to calculate how fast the ball should rotate
 void AParkourGameCharacter::Tick_Roll(float DeltaSeconds)
 {
-	FVector velocity = GetVelocity();
-	static bool initialised;
-	UCapsuleComponent* capsule = GetCapsuleComponent();
-	static float OutRadius;
-	static float OutHalfHeight;
-	if (!initialised) {
-		capsule->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
-		initialised = true;
-	}
-	USkeletalMeshComponent* mesh = GetSkeletalMesh();
+	float OutRadius;
+	float OutHalfHeight;
+  GetCapsuleComponent()->GetUnscaledCapsuleSize(OutRadius, OutHalfHeight);
 
-	static FRotator rotator;
-	rotator = mesh->GetRelativeTransform().Rotator();
+  const float speed = GetVelocity().Size2D();
+	const float delta_rotation = speed * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
+  const FRotator Rotation = FRotator(0.0f, 0.0f, delta_rotation);
 
-
-	float delta_rotation = sqrt(pow(velocity.X, 2) + pow(velocity.Y, 2)) * DeltaSeconds * 360 / (2 * 3.14* OutRadius);
-	//UE_LOG(LogTemp, Warning, TEXT("x velocity rotation should be: %f"), velocity.X);
-	rotator = rotator.Add(0, 0, delta_rotation);
-	mesh->SetRelativeRotation(rotator);
-	//SetActorRotation(rotator);
+  if (Role == ROLE_SimulatedProxy)
+  {
+    BaseRotationOffset *= Rotation.Quaternion();
+  }
+  else
+  {
+    GetSkeletalMesh()->AddRelativeRotation(FRotator(0.0f, 0.0f, delta_rotation), false, nullptr, ETeleportType::None);
+  }
 }
 
 FVector AParkourGameCharacter::GetParkourHandTarget(EHandSideEnum handSide)
@@ -1050,7 +1103,6 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 		PlayerInputComponent->AddActionBinding(AB); \
 	}
 
-	playerinputcomponent_copy = PlayerInputComponent;
 	// Set up gameplay key bindings
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AParkourGameCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
@@ -1091,7 +1143,7 @@ void AParkourGameCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	BIND_ACTION_CUSTOMEVENT("PushL", IE_Released, &AParkourGameCharacter::EndPush, EHandSideEnum::HS_Left);*/
 
 	//Roll and flip controls
-	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &AParkourGameCharacter::Roll_Start);
+	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &AParkourGameCharacter::BeginRoll);
 
 #undef BIND_ACTION_CUSTOMEVENT
 }
@@ -1170,9 +1222,14 @@ void AParkourGameCharacter::SetRagdollOnBodyPart_Implementation(EBodyPart Part, 
 bool AParkourGameCharacter::SetFullRagdoll_Validate(bool bIsFullRagdoll, bool bFromSlide) { return true; }
 void AParkourGameCharacter::SetFullRagdoll_Implementation(bool bIsFullRagdoll, bool bFromSlide)
 {
-	
 	bWasSliding = bFromSlide;
 	m_RagdollState[(int32)EBodyPart::MAX] = bIsFullRagdoll ? 1 : 0;
+  if (bIsFullRagdoll)
+  {
+    isRolling = false;
+    OnRep_IsRolling();
+  }
+
 	OnRep_RagdollState();
 	OnRagdoll.Broadcast();
 }
@@ -1371,7 +1428,7 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		EnablePhysicalAnimation(true);
 
 
-    if (HasAuthority())
+    if (HasAuthority() && !isRolling)
     {
       StandUpAnimRow = ChooseStandUpAnimation(StandUpDir);
       OnRep_StandUpAnimRow();
@@ -1448,6 +1505,11 @@ void AParkourGameCharacter::OnRep_StandUpAnimRow()
   
   if (!isFlipping)
 	PlayStandUpAnimation();
+}
+
+void AParkourGameCharacter::RollRecoverWindowEnded()
+{
+  bCanRollRecover = false;
 }
 
 void AParkourGameCharacter::CapsuleToRagdoll()
