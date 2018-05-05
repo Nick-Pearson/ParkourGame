@@ -348,10 +348,6 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-  FParkourTarget Targ;
-  GetParkourTarget(EHandSideEnum::HS_Left, Targ);
-  GetParkourTarget(EHandSideEnum::HS_Right, Targ);
-
 	CapsuleToRagdoll();
 
 	if (isRolling) 

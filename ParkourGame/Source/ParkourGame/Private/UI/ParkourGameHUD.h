@@ -4,6 +4,7 @@
 #include "GameFramework/HUD.h"
 
 #include "ToasterInterface.h"
+#include "QuestTrackerInterface.h"
 
 #include "ParkourGameHUD.generated.h"
 
@@ -15,6 +16,7 @@ class AParkourGameHUD : public AHUD
 public:
 
 	FORCEINLINE UObject* GetToaster() const { return Toaster.GetObject(); }
+  FORCEINLINE UObject* GetQuestTracker() const { return QuestTracker.GetObject(); }
 
   UFUNCTION(BlueprintImplementableEvent)
   void OpenSpectatorUI(AParkourSpectator* Spectator);
@@ -26,5 +28,8 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD", meta = (AllowPrivateAccess = "true"))
 	TScriptInterface<IToasterInterface> Toaster;
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HUD", meta = (AllowPrivateAccess = "true"))
+  TScriptInterface<IQuestTrackerInterface> QuestTracker;
 		
 };
