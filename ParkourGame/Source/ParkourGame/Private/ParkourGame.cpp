@@ -7,6 +7,13 @@
 #include "Modules/ModuleManager.h"
 #include "NetworkVersion.h"
 
+static TAutoConsoleVariable<int32> CVarServerNumber(
+	TEXT("serverNumber"),
+	0,
+	TEXT("Defines the server number that this client will connect to.\n")
+	TEXT("  0: default\n"),
+	ECVF_Scalability | ECVF_RenderThreadSafe);
+
 class FParkourGame
 	: public FDefaultGameModuleImpl
 {
