@@ -246,7 +246,7 @@ void AParkourGameCharacter::PostInitializeComponents()
 		m_VaultData[i].ArmSpring = NewObject<UPushSpringSystem>(this);
 		m_GripData[i].ArmSpring = NewObject<USpringSystem>(this);
 		m_GripData[i].ArmSpring->SpringConstant = 5000.0f;
-		m_GripData[i].ArmSpring->SpringDampening = 100.0f;
+		m_GripData[i].ArmSpring->SpringDampening = 110.0f;
 	}
 }
 
@@ -896,7 +896,12 @@ void AParkourGameCharacter::Server_Vault_Implementation(EHandSideEnum Hand)
 	//GetCharacterMovement()->Velocity = (facing.Vector() * 100);
 	Server_EndGrip(EHandSideEnum::HS_Left);
 	Server_EndGrip(EHandSideEnum::HS_Right);
+	isVaulting = true;
 	OnRep_Vault(Hand);
+}
+
+void AParkourGameCharacter::EndVaultAnim() {
+	isVaulting = false;
 }
 
 void AParkourGameCharacter::OnRep_Vault(EHandSideEnum Hand) {
@@ -907,9 +912,12 @@ void AParkourGameCharacter::OnRep_Vault(EHandSideEnum Hand) {
 	FRotator facing = GetControlRotation();
 
 	facing.SetComponentForAxis(EAxis::Y, 0.f);
-	FLatentActionInfo LatentInfo;
-	LatentInfo.CallbackTarget = this;
-	UKismetSystemLibrary::MoveComponentTo(RootComponent, RootComponent->GetComponentLocation() + (DistSqrd * FVector::UpVector) + (facing.Vector() * 50), FRotator(0.0f, 0.0f, 0.0f), false, false, 0.5f, false, EMoveComponentAction::Type::Move, LatentInfo);
+	FLatentActionInfo info;
+	info.CallbackTarget = this;
+	info.ExecutionFunction = "EndVaultAnim";
+	info.UUID = 1;
+	info.Linkage = 0;
+	UKismetSystemLibrary::MoveComponentTo(RootComponent, RootComponent->GetComponentLocation() + (DistSqrd * FVector::UpVector) + (facing.Vector() * 50), FRotator(0.0f, 0.0f, 0.0f), false, false, 2.5f, false, EMoveComponentAction::Type::Move, info);
 }
 
 bool AParkourGameCharacter::Server_BeginGrip_Validate(EHandSideEnum Hand) { return true; }
@@ -931,7 +939,7 @@ void AParkourGameCharacter::Server_BeginGrip_Implementation(EHandSideEnum Hand)
 	FVector pathToActor = Target.GripTarget - GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Hand_L : FParkourFNames::Bone_Hand_R);
 	float DistSqrd = pathToActor.SizeSquared();
 
-	if (DistSqrd > FMath::Square(150.0f))
+	if (DistSqrd > FMath::Square(200.0f))
 		return;
 
 	if (pathToActor.Z > 0.f) {

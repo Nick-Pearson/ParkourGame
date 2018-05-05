@@ -237,6 +237,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	int32 PhysicsSubstepTargetFramerate = 120;
 
+	UFUNCTION(BlueprintCallable, Category = "Physics")
+	void EndVaultAnim();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
@@ -470,6 +473,9 @@ public:
   void Server_BeginRoll();
 
   void EnableRolling(bool Enable) { bRollingEnabled = Enable; }
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	bool isVaulting = false;
 
   // only runs on servre
   UFUNCTION(BlueprintCallable, Category = "Physics")
