@@ -18,24 +18,47 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "LeaderboardEntry")
 	FString PlayerName;
 
+  // calculated score for this player
 	UPROPERTY(BlueprintReadWrite, Category = "LeaderboardEntry")
 	int32 Score;
 };
 
-// NOTE:: This corresponds to an index on the leaderboard 
-// Do not reorder or otherwise change the mapping of games to integers without updating the server as well
 UENUM(BlueprintType)
-enum class EMinigameFilter : uint8
+enum class EGameOutcome : uint8
 {
-	CaptureTheFlag = 0,
+  Win,
+  Loss,
+  Draw
+};
 
-	None = 255
+// structure for data we want to send to the leaderboard
+USTRUCT(BlueprintType)
+struct FNewLeaderboardData
+{
+  GENERATED_BODY()
+
+public:
+  FNewLeaderboardData(const FString& inName = "", const int32 inGoals = 0, const int32 inOwnGoals = 0, const EGameOutcome inOutcome = EGameOutcome::Draw) :
+    PlayerName(inName), Goals(inGoals), OwnGoals(inOwnGoals), Outcome(inOutcome)
+  {}
+
+  UPROPERTY(BlueprintReadWrite, Category = "NewLeaderboardData")
+  FString PlayerName;
+
+  UPROPERTY(BlueprintReadWrite, Category = "NewLeaderboardData")
+  int32 Goals;
+
+  UPROPERTY(BlueprintReadWrite, Category = "NewLeaderboardData")
+  int32 OwnGoals;
+
+  UPROPERTY(BlueprintReadWrite, Category = "NewLeaderboardData")
+  EGameOutcome Outcome;
 };
 
 class AMiniGameBase;
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FGetLeaderboardSignature, bool, Success, const TArray<FLeaderboardEntry>&, Entries);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FPostLeaderboardSignature, bool, Success);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FPostLeaderboardSignature, bool, Success, const FString&, PlayerName);
 
 DECLARE_DELEGATE_TwoParams(FAPIResponseDelegate, int32 /*HTTPStatusCode*/, FString /*Content*/);
 
@@ -47,14 +70,15 @@ class ULeaderboardFunctionLibrary : public UBlueprintFunctionLibrary
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "LeaderboardFunctionLibrary")
-	static void GetLeaderboardEntries(FGetLeaderboardSignature Callback, EMinigameFilter MinigameFilter = EMinigameFilter::None);
+	static void GetLeaderboardEntries(FGetLeaderboardSignature Callback, const FString& PlayerFilter);
 
+  // post a set of items to the DB, callback will be called once per item as they are successful
 	UFUNCTION(BlueprintCallable, Category = "LeaderboardFunctionLibrary")
-	static void PostLeaderboardEntries(FPostLeaderboardSignature Callback, const TArray<FLeaderboardEntry>& Entries, EMinigameFilter MinigameID);
+	static void PostLeaderboardEntries(FPostLeaderboardSignature Callback, const TArray<FNewLeaderboardData>& Entries);
 
 private:
 	static void GetLeaderboardEntries_Response(int32 HTTPStatusCode, FString Content, FGetLeaderboardSignature Callback);
-	static void PostLeaderboardEntries_Response(int32 HTTPStatusCode, FString Content, FPostLeaderboardSignature Callback);
+	static void PostLeaderboardEntries_Response(int32 HTTPStatusCode, FString Content, FPostLeaderboardSignature Callback, FString PlayerName);
 
 	static void MakeAPIRequest_Internal(const FAPIResponseDelegate& OnAPIResponse, const FString& Endpoint, const FString& ContentString = "", const FString& Method = "GET");
 	static void OnResponseCompleted(FHttpRequestPtr ReqPtr, FHttpResponsePtr Response, bool Success, FAPIResponseDelegate ResponseEvent);

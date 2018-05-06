@@ -173,6 +173,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	void GetAllPlayersInTeam(int32 TeamID, TArray<AParkourGameCharacter*>& Players) const;
 
+  UFUNCTION(BlueprintCallable, Category = "MiniGame")
+  void GetAllPlayerNamesInTeam(int32 TeamID, TArray<FString>& outNames) const;
+
 	UFUNCTION(BlueprintCallable, Category = "MiniGame")
 	int32 GetTeamFromPlayer(AParkourGameCharacter* Player) const;
 

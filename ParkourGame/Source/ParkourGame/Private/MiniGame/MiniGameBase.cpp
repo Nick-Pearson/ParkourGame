@@ -3,8 +3,12 @@
 #include "MiniGameManager.h"
 #include "../Utils/ParkourGameLogging.h"
 #include "../Core/ParkourGameState.h"
+#include "LeaderboardFunctionLibrary.h"
+#include "../ParkourGameCharacter.h"
 
 #include "UnrealNetwork.h"
+#include "TimerManager.h"
+#include "GameFramework/PlayerState.h"
 
 AMiniGameBase::AMiniGameBase()
 {
@@ -201,6 +205,29 @@ void AMiniGameBase::OnGameEnd(EMiniGameEndReason Reason)
 	GetWorld()->GetTimerManager().SetTimer(DestroyHandle, this, &AMiniGameBase::Server_Destroy, 10.0f);
 
 	BPE_GameEnd();
+
+  if (Reason != EMiniGameEndReason::NotEnoughPlayers && HasAuthority())
+  {
+    TArray<FNewLeaderboardData> Entries;
+    Entries.Reserve(GetNumPlayers());
+
+    for (const FMiniGameTeam& Team : TeamData)
+    {
+      EGameOutcome TeamOutcome = (GetWinningTeam() == Team.TeamID) ? EGameOutcome::Win : EGameOutcome::Loss;
+
+      for (const FPlayerInTeam& Player : Team.PlayersInTeam)
+      {
+        AParkourGameCharacter* PlayerPtr = Player.PlayerPtr.Get();
+
+        if(!PlayerPtr) continue;
+        
+        Entries.Add(FNewLeaderboardData(PlayerPtr->PlayerState->PlayerName, Player.Goals, Player.OwnGoals, TeamOutcome));
+      }
+    }
+
+    FPostLeaderboardSignature Callback;
+    ULeaderboardFunctionLibrary::PostLeaderboardEntries(Callback, Entries);
+  }
 }
 
 int32 AMiniGameBase::GetNumPlayers() const
@@ -245,6 +272,21 @@ void AMiniGameBase::GetAllPlayersInTeam(int32 TeamID, TArray<AParkourGameCharact
 		if (AParkourGameCharacter* Player = Plr.PlayerPtr.Get())
 			Players.Add(Player);
 	}
+}
+
+void AMiniGameBase::GetAllPlayerNamesInTeam(int32 TeamID, TArray<FString>& outNames) const
+{
+  const FMiniGameTeam* FoundTeam = TeamData.FindByPredicate([&](const FMiniGameTeam& QueryTeam) {
+    return QueryTeam.TeamID == TeamID;
+  });
+
+  if (!FoundTeam) return;
+
+  for (const FPlayerInTeam& Plr : FoundTeam->PlayersInTeam)
+  {
+    if (AParkourGameCharacter* Player = Plr.PlayerPtr.Get())
+      outNames.Add(Player->PlayerState->PlayerName);
+  }
 }
 
 int32 AMiniGameBase::GetTeamFromPlayer(AParkourGameCharacter* Player) const

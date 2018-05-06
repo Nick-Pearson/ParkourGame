@@ -15,7 +15,7 @@ namespace
 	const FString AuthorizationToken = "#87WebnOJ6^zTCX4";
 };
 
-void ULeaderboardFunctionLibrary::GetLeaderboardEntries(FGetLeaderboardSignature Callback, EMinigameFilter MinigameFilter /*= EMinigameFilter::None*/)
+void ULeaderboardFunctionLibrary::GetLeaderboardEntries(FGetLeaderboardSignature Callback, const FString& PlayerFilter)
 {
 	if (!Callback.IsBound())
 	{
@@ -24,42 +24,45 @@ void ULeaderboardFunctionLibrary::GetLeaderboardEntries(FGetLeaderboardSignature
 	}
 
 	FString Endpoint = "score";
-	if (MinigameFilter != EMinigameFilter::None)
-		Endpoint = FString::Printf(TEXT("%s?minigameId=%d"), *Endpoint, (int32)MinigameFilter);
+	if (!PlayerFilter.IsEmpty())
+		Endpoint = FString::Printf(TEXT("%s?player=%s"), *Endpoint, *PlayerFilter);
 
 	MakeAPIRequest_Internal(FAPIResponseDelegate::CreateStatic(&ULeaderboardFunctionLibrary::GetLeaderboardEntries_Response, Callback), Endpoint);
 }
 
-void ULeaderboardFunctionLibrary::PostLeaderboardEntries(FPostLeaderboardSignature Callback, const TArray<FLeaderboardEntry>& Entries, EMinigameFilter MinigameID)
+void ULeaderboardFunctionLibrary::PostLeaderboardEntries(FPostLeaderboardSignature Callback, const TArray<FNewLeaderboardData>& Entries)
 {
 	// nothing to send
 	if (Entries.Num() == 0) return;
 
-	if (MinigameID == EMinigameFilter::None)
+	for (const FNewLeaderboardData& Entry : Entries)
 	{
-		UE_LOG(ParkourGame, Warning, TEXT("Failed to send Leaderboard API request as no minigame was specified"));
-		return;
+    if(Entry.PlayerName.IsEmpty()) continue;
+
+    ULowEntryJsonObject* EntryObject = ULowEntryJsonObject::Create();
+    ULowEntryJsonObject::SetString(EntryObject, "playerName", Entry.PlayerName);
+    ULowEntryJsonObject::SetInteger(EntryObject, "goals", Entry.Goals);
+    ULowEntryJsonObject::SetInteger(EntryObject, "ownGoals", Entry.OwnGoals);
+
+    FString OutcomeString = "W";
+    switch (Entry.Outcome)
+    {
+    case EGameOutcome::Win:
+      OutcomeString = "W";
+      break;
+    case EGameOutcome::Loss:
+      OutcomeString = "L";
+      break;
+    case EGameOutcome::Draw:
+      OutcomeString = "D";
+      break;
+    }
+
+    ULowEntryJsonObject::SetString(EntryObject, "gameOutcome", OutcomeString);
+
+    MakeAPIRequest_Internal(FAPIResponseDelegate::CreateStatic(&ULeaderboardFunctionLibrary::PostLeaderboardEntries_Response, Callback, Entry.PlayerName), "score", ULowEntryJsonObject::ToJsonString(EntryObject, false), "POST");
 	}
 
-	int32 SessionID = 0; // TODO: Generate a session ID
-
-	ULowEntryJsonArray* ScoresArray = ULowEntryJsonArray::Create();
-
-	for (const FLeaderboardEntry& Entry : Entries)
-	{
-		ULowEntryJsonArray* EntryArray = ULowEntryJsonArray::Create();
-		ULowEntryJsonArray::AddString(EntryArray, Entry.PlayerName);
-		ULowEntryJsonArray::AddInteger(EntryArray, Entry.Score);
-
-		ULowEntryJsonArray::AddJsonArray(ScoresArray, EntryArray);
-	}
-
-	ULowEntryJsonObject* ContainerObject = ULowEntryJsonObject::Create();
-	ULowEntryJsonObject::SetJsonArray(ContainerObject, "scores", ScoresArray);
-	ULowEntryJsonObject::SetInteger(ContainerObject, "minigameId", SessionID);
-	ULowEntryJsonObject::SetInteger(ContainerObject, "sessionId", (int32)MinigameID);
-
-	MakeAPIRequest_Internal(FAPIResponseDelegate::CreateStatic(&ULeaderboardFunctionLibrary::PostLeaderboardEntries_Response, Callback), "score", ULowEntryJsonObject::ToJsonString(ContainerObject, false), "POST");
 }
 
 void ULeaderboardFunctionLibrary::GetLeaderboardEntries_Response(int32 HTTPStatusCode, FString Content, FGetLeaderboardSignature Callback)
@@ -105,9 +108,9 @@ void ULeaderboardFunctionLibrary::GetLeaderboardEntries_Response(int32 HTTPStatu
 	Callback.Execute(true, ReturnValue);
 }
 
-void ULeaderboardFunctionLibrary::PostLeaderboardEntries_Response(int32 HTTPStatusCode, FString Content, FPostLeaderboardSignature Callback)
+void ULeaderboardFunctionLibrary::PostLeaderboardEntries_Response(int32 HTTPStatusCode, FString Content, FPostLeaderboardSignature Callback, FString PlayerName)
 {
-	Callback.ExecuteIfBound(HTTPStatusCode == 200);
+	Callback.ExecuteIfBound(HTTPStatusCode == 200, PlayerName);
 }
 
 void ULeaderboardFunctionLibrary::MakeAPIRequest_Internal(const FAPIResponseDelegate& OnAPIResponse, const FString& Endpoint, const FString& ContentString /*= ""*/, const FString& Method /*= "GET"*/)

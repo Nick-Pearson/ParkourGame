@@ -21,6 +21,12 @@ public:
   UFUNCTION(BlueprintImplementableEvent)
   void OpenSpectatorUI(AParkourSpectator* Spectator);
 
+  UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+  void OpenLeadboardUI(const TArray<FString>& TeamAScores, const TArray<FString>& TeamBScores);
+
+  UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+  void CloseLeaderboardUI();
+
   UFUNCTION(BlueprintImplementableEvent)
   void InitialisePlayerUI();
 
