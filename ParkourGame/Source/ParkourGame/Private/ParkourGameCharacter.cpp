@@ -433,11 +433,11 @@ void AParkourGameCharacter::SubtickPhysics(float DeltaSeconds)
 
 void AParkourGameCharacter::MoveForward(float Value)
 {
+	MoveForward_mag = Value;
   if (!Controller || Value == 0.0f)
     return;
-  MoveForward_mag = Value;
-  ResetAFKTimer();
 
+  ResetAFKTimer();
   if (m_RagdollState[(int32)EBodyPart::MAX] > 0) return;
 
 	// find out which way is forward
@@ -451,9 +451,10 @@ void AParkourGameCharacter::MoveForward(float Value)
 
 void AParkourGameCharacter::MoveRight(float Value)
 {
+	MoveRight_mag = Value;
 	if (!Controller || Value == 0.0f)
 		return;
-	MoveRight_mag = Value;
+
   ResetAFKTimer();
 
   if (m_RagdollState[(int32)EBodyPart::MAX] > 0) return;
@@ -550,6 +551,7 @@ void AParkourGameCharacter::OnRep_IsRolling_Implementation()
   {
 	  MoveForward_roll = MoveForward_mag;
 	  MoveRight_roll = MoveRight_mag;
+	  
     //become a ball!
     capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
 
