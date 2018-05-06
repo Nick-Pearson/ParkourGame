@@ -1524,7 +1524,7 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
 
 		FHitResult OutHit;
-		FVector Start = (Capsule->GetComponentLocation());
+		FVector Start = (SocketLocation); //(Capsule->GetComponentLocation());
 
 		FVector DownVector = (Capsule->GetUpVector()) * -1;
 		FVector End = ((DownVector * 1000.f) + Start);
