@@ -913,7 +913,7 @@ void AParkourGameCharacter::OnRep_Vault(EHandSideEnum Hand) {
 	info.ExecutionFunction = "EndVaultAnim";
 	info.UUID = 1;
 	info.Linkage = 0;
-	UKismetSystemLibrary::MoveComponentTo(RootComponent, RootComponent->GetComponentLocation() + (DistSqrd * FVector::UpVector) + (facing.Vector() * 50), FRotator(0.0f, 0.0f, 0.0f), false, false, 2.5f, false, EMoveComponentAction::Type::Move, info);
+	UKismetSystemLibrary::MoveComponentTo(RootComponent, RootComponent->GetComponentLocation() + (DistSqrd * FVector::UpVector) + (facing.Vector() * 50), FRotator(0.0f, 0.0f, 0.0f), false, false, 0.5f, false, EMoveComponentAction::Type::Move, info);
 }
 
 bool AParkourGameCharacter::Server_BeginGrip_Validate(EHandSideEnum Hand) { return true; }
