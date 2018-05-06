@@ -352,7 +352,12 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 
 	if (isRolling) 
   {
-		MoveForward(1.0f);
+		if (MoveForward_roll != 0 || MoveRight_roll != 0) {
+			MoveForward(MoveForward_roll);
+			MoveRight(MoveRight_roll);
+		}
+		else
+			MoveForward(1.0f);
 		Tick_Roll(DeltaSeconds);
 
     if (HasAuthority())
@@ -428,11 +433,11 @@ void AParkourGameCharacter::SubtickPhysics(float DeltaSeconds)
 
 void AParkourGameCharacter::MoveForward(float Value)
 {
+	MoveForward_mag = Value;
   if (!Controller || Value == 0.0f)
     return;
 
   ResetAFKTimer();
-
   if (m_RagdollState[(int32)EBodyPart::MAX] > 0) return;
 
 	// find out which way is forward
@@ -446,6 +451,7 @@ void AParkourGameCharacter::MoveForward(float Value)
 
 void AParkourGameCharacter::MoveRight(float Value)
 {
+	MoveRight_mag = Value;
 	if (!Controller || Value == 0.0f)
 		return;
 
@@ -543,6 +549,9 @@ void AParkourGameCharacter::OnRep_IsRolling_Implementation()
   // rolling will exit roll
   if (isRolling) 
   {
+	  MoveForward_roll = MoveForward_mag;
+	  MoveRight_roll = MoveRight_mag;
+	  
     //become a ball!
     capsule->SetCapsuleSize(OutRadius * 2, OutRadius * 2, true);
 
