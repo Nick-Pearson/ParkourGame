@@ -477,6 +477,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	bool isVaulting = false;
 
+
   // only runs on servre
   UFUNCTION(BlueprintCallable, Category = "Physics")
   void StartRollRecoverTimer();
@@ -487,6 +488,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Physics", ReplicatedUsing = OnRep_IsRolling)
 	bool isRolling = false;
 
+	float MoveForward_mag = 0.0f;
+	float MoveRight_mag = 0.0f;
+	float MoveForward_roll = 0.0f;
+	float MoveRight_roll = 0.0f;
+	      
   UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Physics")
   void OnRep_IsFlipping();
 
