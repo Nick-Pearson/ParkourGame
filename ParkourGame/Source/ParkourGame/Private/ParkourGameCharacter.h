@@ -490,8 +490,6 @@ public:
 
 	float MoveForward_mag = 0.0f;
 	float MoveRight_mag = 0.0f;
-	float MoveForward_roll = 0.0f;
-	float MoveRight_roll = 0.0f;
 	      
   UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Physics")
   void OnRep_IsFlipping();
