@@ -21,6 +21,7 @@ void FPlayerKeyframe::LinearInterpolate(const FPlayerKeyframe& A, const FPlayerK
 
   Result.IsFullRagdoll = Alpha < 0.5f ? A.IsFullRagdoll : B.IsFullRagdoll;
   Result.IsInAir = Alpha < 0.5f ? A.IsInAir : B.IsInAir;
+  Result.IsTackling = Alpha < 0.0f ? A.IsTackling : B.IsTackling;
 }
 
 const FPlayerKeyframe* FPlayerReplayData::GetKeyframe(int32 index) const
@@ -114,7 +115,7 @@ void AReplayManager::StartReplay(float ReplayDuration, float ReplayTimeScaling /
 
   for (FPlayerReplayData& PlayerData : m_KeyframeData)
   {
-    APawn* RealActor = PlayerData.PlayerPawn.Get();
+    AActor* RealActor = PlayerData.RealActor.Get();
 
     if (RealActor) RealActor->SetActorHiddenInGame(true);
   }
@@ -134,7 +135,7 @@ void AReplayManager::StopReplay(bool DestroyActors /*= true*/)
 	for (FPlayerReplayData& Player : m_KeyframeData)
 	{
 		AActor* LiveReplayActor = Player.ReplayActor.Get();
-		APawn* RealActor = Player.PlayerPawn.Get();
+		AActor* RealActor = Player.RealActor.Get();
 
 		if (RealActor) RealActor->SetActorHiddenInGame(false);
 
@@ -153,7 +154,7 @@ void AReplayManager::GetAllReplayPlayers(TArray<AParkourGameCharacter*>& outActo
 
   for (const FPlayerReplayData& Player : m_KeyframeData)
   {
-    if (AParkourGameCharacter* ReplayActorPtr = Player.ReplayActor.Get())
+    if (AParkourGameCharacter* ReplayActorPtr = Cast<AParkourGameCharacter>(Player.ReplayActor.Get()))
       outActors.Add(ReplayActorPtr);
   }
 }
@@ -161,12 +162,35 @@ void AReplayManager::GetAllReplayPlayers(TArray<AParkourGameCharacter*>& outActo
 AActor* AReplayManager::GetReplayActorForRealActor(AActor* RealActor) const
 {
   const FPlayerReplayData* PlayerDataPtr = m_KeyframeData.FindByPredicate([&](const FPlayerReplayData& Key) {
-    return Key.PlayerPawn == RealActor;
+    return Key.RealActor == RealActor;
   });
 
   if (PlayerDataPtr) return PlayerDataPtr->ReplayActor.Get();
 
   return nullptr;
+}
+
+void AReplayManager::RegisterActorForReplay(AActor* Actor)
+{
+  // ensure no duplicates
+  FPlayerReplayData* DataPtr = m_KeyframeData.FindByPredicate([&](const FPlayerReplayData& Data) {
+    return Data.RealActor == Actor;
+  });
+
+  if (DataPtr) return;
+
+  SetupNewPlayer(nullptr, Actor);
+}
+
+void AReplayManager::RemoveActorFromReplay(AActor* Actor)
+{
+  int32 DataIdx = m_KeyframeData.FindLastByPredicate([&](const FPlayerReplayData& Data) {
+    return Data.RealActor == Actor;
+  });
+
+  if (DataIdx == INDEX_NONE) return;
+
+  m_KeyframeData.RemoveAtSwap(DataIdx);
 }
 
 void AReplayManager::StartRecording()
@@ -205,6 +229,8 @@ void AReplayManager::OnPlayerLogin(AGameModeBase* GameMode, APlayerController* N
 
 void AReplayManager::OnPlayerLogout(AGameModeBase* GameMode, AController* Exiting)
 {
+  if (!Exiting) return;
+
   int32 PlayerDataIdx = m_KeyframeData.FindLastByPredicate([&](const FPlayerReplayData& Data) {
     return Data.PlayerController == Exiting;
   });
@@ -216,9 +242,9 @@ void AReplayManager::OnPlayerLogout(AGameModeBase* GameMode, AController* Exitin
 
 void AReplayManager::RecordKeyframe(FPlayerReplayData& Player, float WorldTime)
 {
-  AParkourGameCharacter* LivePlayer = Player.PlayerPawn.Get();
+  AActor* LiveActor = Player.RealActor.Get();
 
-	if (!LivePlayer)
+	if (!LiveActor)
 		return;
 
 	const float LocalBufferSize = Player.EndTime - Player.StartTime;
@@ -262,7 +288,7 @@ void AReplayManager::RecordKeyframe(FPlayerReplayData& Player, float WorldTime)
 	//populate the keyframe
 	Player.EndTime = WorldTime;
 
-	CreateKeyframe(LivePlayer, Player.Keyframes[NewKeyframeIndex], WorldTime);
+	CreateKeyframe(LiveActor, Player.Keyframes[NewKeyframeIndex], WorldTime);
 
   // weird bug where keyframes go out of order... remove when fixes
   Player.Keyframes.Sort([&](const FPlayerKeyframe& A, const FPlayerKeyframe& B) {
@@ -272,12 +298,13 @@ void AReplayManager::RecordKeyframe(FPlayerReplayData& Player, float WorldTime)
   Player.CurrentKeyframeIdx = 0;
 }
 
-void AReplayManager::CreateKeyframe(AParkourGameCharacter* Player, FPlayerKeyframe& outKeyframe, float WorldTime)
+void AReplayManager::CreateKeyframe(AActor* Actor, FPlayerKeyframe& outKeyframe, float WorldTime)
 {
 	outKeyframe.WorldTime = WorldTime;
-	outKeyframe.RootTransform = Player->GetActorTransform();
-
-  Player->CreateKeyframe(outKeyframe);
+	outKeyframe.RootTransform = Actor->GetActorTransform();
+  
+  if (AParkourGameCharacter* Player = Cast<AParkourGameCharacter>(Actor))
+    Player->CreateKeyframe(outKeyframe);
 }
 
 void AReplayManager::UpdateReplay(float WorldTime)
@@ -304,19 +331,24 @@ void AReplayManager::UpdatePlayerReplay(FPlayerReplayData& Player, float ReplayT
   if (!HasValidData)
     return;
 
-	AParkourGameCharacter* ReplayActor = Player.ReplayActor.Get();
+  AActor* ReplayActor = Player.ReplayActor.Get();
 
 	//update the state of the replay actor, if required set the real actor to hidden
 	if (!ReplayActor)
 	{
-    AParkourGameCharacter* RealActor = Player.PlayerPawn.Get();
+    AActor* RealActor = Player.RealActor.Get();
 		UWorld* WorldPtr = GetWorld();
 
 		FActorSpawnParameters Params;
     Params.ObjectFlags &= RF_Transient;
-		ReplayActor = WorldPtr->SpawnActor<AParkourGameCharacter>(RealActor->GetClass(), Params);
-    ReplayActor->IsReplayActor = true;
-    RealActor->InitialiseReplayActor(ReplayActor);
+		ReplayActor = WorldPtr->SpawnActor<AActor>(RealActor->GetClass(), Params);
+
+    if (AParkourGameCharacter* ReplayPlayer = Cast<AParkourGameCharacter>(ReplayActor))
+    {
+      ReplayPlayer->IsReplayActor = true;
+      CastChecked<AParkourGameCharacter>(RealActor)->InitialiseReplayActor(ReplayPlayer);
+    }
+
     Player.ReplayActor = ReplayActor;
 
 		RealActor->SetActorHiddenInGame(true);
@@ -351,20 +383,31 @@ void AReplayManager::UpdatePlayerReplay(FPlayerReplayData& Player, float ReplayT
 	//apply the keyframe to the replay actor
 	ReplayActor->SetActorTransform(InterpKeyframe.RootTransform);
 
-  ReplayActor->ReplayKeyframe(InterpKeyframe);
+  if (AParkourGameCharacter* ReplayPlayer = Cast<AParkourGameCharacter>(ReplayActor))
+    ReplayPlayer->ReplayKeyframe(InterpKeyframe);
 }
 
-void AReplayManager::SetupNewPlayer(AController* Controller, AParkourGameCharacter* Player)
+void AReplayManager::SetupNewPlayer(AController* Controller, AActor* Player)
 {
   FPlayerReplayData& NewEntry = m_KeyframeData[m_KeyframeData.AddDefaulted()];
 
   NewEntry.PlayerController = Controller;
-  NewEntry.PlayerPawn = Player;
+  NewEntry.RealActor = Player;
   NewEntry.StartTime = GetWorld()->GetRealTimeSeconds();
   NewEntry.EndTime = GetWorld()->GetRealTimeSeconds();
+
+  Player->OnEndPlay.AddDynamic(this, &AReplayManager::OnReplayActorEndPlay);
 }
 
 float AReplayManager::GetCurrentReplayTime(float WorldTime) const
 {
   return  ((WorldTime - ReplayStartTime) * ReplayTimeScale) + ReplayStartTime - ReplayLength;
+}
+
+void AReplayManager::OnReplayActorEndPlay(AActor* Actor, EEndPlayReason::Type EndPlayReason)
+{
+  //dont bother if we are about to be destroyed too
+  if (EndPlayReason == EEndPlayReason::Type::EndPlayInEditor || EndPlayReason == EEndPlayReason::Type::Quit || IsPendingKill()) return;
+
+  RemoveActorFromReplay(Actor);
 }

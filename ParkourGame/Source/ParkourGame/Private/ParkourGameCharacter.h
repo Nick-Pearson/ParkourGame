@@ -218,6 +218,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<AParkourMesh*> NearbyParkourObjects;
 
+
+  virtual void FellOutOfWorld(const class UDamageType& dmgType) override;
+
 public:
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
@@ -426,9 +429,15 @@ protected:
 	UFUNCTION()
 	void OnPlayerNameChanged();
   
-  void PlayStandUpAnimation();
+  void PlayStandUpAnimation(const FName& StandUpAnimRow);
   FName ChooseStandUpAnimation(EStandUpDirection Direction) const;
   void ResetStandupAnim();
+
+  UFUNCTION(BlueprintNativeEvent, Category = "Replay", meta = (DisplayName = "CreateKeyframe"))
+  FPlayerKeyframe BP_CreateKeyframe(const FPlayerKeyframe& Keyframe);
+
+  UFUNCTION(BlueprintNativeEvent, Category = "Replay", meta = (DisplayName = "ReplayKeyframe"))
+  bool BP_ReplayKeyframe(const FPlayerKeyframe& Keyframe);
 
 public:
 	/** Returns CameraBoom subobject **/
@@ -525,10 +534,8 @@ public:
   UFUNCTION(BlueprintCallable, Category = "CharacterState")
   void EnableJumping(bool Enable = true);
 
-  UFUNCTION(BlueprintNativeEvent, Category = "Replay")
   bool CreateKeyframe(FPlayerKeyframe& Keyframe);
 
-  UFUNCTION(BlueprintNativeEvent, Category = "Replay")
   bool ReplayKeyframe(const FPlayerKeyframe& Keyframe);
 
   UFUNCTION(BlueprintNativeEvent, Category = "Replay")
@@ -576,13 +583,6 @@ private:
 
 	UPROPERTY(Transient)
 	FPushData m_PushData[(int32)EHandSideEnum::MAX];
-
-  UFUNCTION()
-  void OnRep_StandUpAnimRow();
-
-  // which animation from the table we should play to stand up
-  UPROPERTY(ReplicatedUsing = OnRep_StandUpAnimRow)
-  FName StandUpAnimRow = NAME_None;
 
   FTimerHandle ResetStandupHandle;
 

@@ -4,23 +4,34 @@
 #include "GameFramework/Info.h"
 #include "ReplayManager.generated.h"
 
-USTRUCT(BlueprintType)
-struct FPlayerKeyframe
+USTRUCT()
+struct FKeyframeBase
 {
   GENERATED_BODY()
 
 public:
 
-	// World time in seconds
-	float WorldTime;
+  // World time in seconds
+  float WorldTime;
 
-	FTransform RootTransform;
+  FTransform RootTransform;
+};
+
+USTRUCT(BlueprintType)
+struct FPlayerKeyframe : public FKeyframeBase
+{
+  GENERATED_BODY()
+
+public:
 
   FVector Velocity;
 
   int32 IsFullRagdoll;
 
   bool IsInAir;
+
+  UPROPERTY(BlueprintReadWrite, Category = "PlayerKeyframe")
+  bool IsTackling;
 
 	static void LinearInterpolate(const FPlayerKeyframe& A, const FPlayerKeyframe& B, float Alpha, FPlayerKeyframe& Result);
 };
@@ -32,10 +43,10 @@ struct FPlayerReplayData
 {
 	// reference to the player
   TWeakObjectPtr<AController> PlayerController;
-	TWeakObjectPtr<AParkourGameCharacter> PlayerPawn;
+	TWeakObjectPtr<AActor> RealActor;
 
 	// actor replaying the player
-	TWeakObjectPtr<AParkourGameCharacter> ReplayActor;
+	TWeakObjectPtr<AActor> ReplayActor;
 
 	// index of the start of the replay keyframes
 	int32 CurrentKeyframeIdx = 0;
@@ -73,12 +84,17 @@ public:
   FORCEINLINE bool IsRecording() const { return bIsRecording; }
   FORCEINLINE bool IsReplaying() const { return bIsReplaying; }
 
-  // get all actors involved in a replay
+  // get all players involved in a replay
   void GetAllReplayPlayers(TArray<AParkourGameCharacter*>& outActors) const;
 
   // get the replay actor for a particular real actor
   AActor* GetReplayActorForRealActor(AActor* RealActor) const;
 
+  UFUNCTION(BlueprintCallable, Category = "ReplayManager")
+  void RegisterActorForReplay(AActor* Actor);
+
+  UFUNCTION(BlueprintCallable, Category = "ReplayManager")
+  void RemoveActorFromReplay(AActor* Actor);
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Replay Manager", meta = (ClampMin = "0.1"))
@@ -108,15 +124,18 @@ private:
 	void OnPlayerLogout(AGameModeBase* GameMode, AController* Exiting);
 
 	void RecordKeyframe(FPlayerReplayData& Player, float WorldTime);
-	void CreateKeyframe(AParkourGameCharacter* Player, FPlayerKeyframe& outKeyframe, float WorldTime);
+	void CreateKeyframe(AActor* Actor, FPlayerKeyframe& outKeyframe, float WorldTime);
 
 	void UpdateReplay(float WorldTime);
 	void UpdatePlayerReplay(FPlayerReplayData& Player, float ReplayTime);
 
-  void SetupNewPlayer(AController* Controller, AParkourGameCharacter* Player);
+  void SetupNewPlayer(AController* Controller, AActor* Player);
 
   // get the current position of the replay, represented in world time
   float GetCurrentReplayTime(float WorldTime) const;
+
+  UFUNCTION()
+  void OnReplayActorEndPlay(AActor* Actor, EEndPlayReason::Type EndPlayReason);
 
 private:
 

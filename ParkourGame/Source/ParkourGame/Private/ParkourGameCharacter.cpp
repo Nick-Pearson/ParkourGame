@@ -256,9 +256,20 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 	DOREPLIFETIME(AParkourGameCharacter, m_GripData);
-  DOREPLIFETIME(AParkourGameCharacter, StandUpAnimRow);
   DOREPLIFETIME(AParkourGameCharacter, isRolling);
   DOREPLIFETIME(AParkourGameCharacter, isFlipping);
+}
+
+void AParkourGameCharacter::FellOutOfWorld(const class UDamageType& dmgType)
+{
+  if (HasAuthority())
+  {
+    AController* OurController = GetController();
+
+    Super::FellOutOfWorld(dmgType);
+
+    GetWorld()->GetAuthGameMode()->RestartPlayer(OurController);
+  }
 }
 
 void AParkourGameCharacter::OnRep_PlayerState()
@@ -286,7 +297,7 @@ void AParkourGameCharacter::OnPlayerNameChanged()
 		PlayerNameTag->SetText(FText::FromString(ParkourPlayerState->PlayerName));
 }
 
-void AParkourGameCharacter::PlayStandUpAnimation()
+void AParkourGameCharacter::PlayStandUpAnimation(const FName& StandUpAnimRow)
 {
   if (!StandUpAnimationTable) return;
   
@@ -336,12 +347,16 @@ void AParkourGameCharacter::ResetStandupAnim()
 
   EnableJumping(true);
   EnableRolling(true);
+}
 
-  if (HasAuthority())
-  {
-    // server should update to clients when the animation is over so that lagging clients don't play the animation stupidly late
-    StandUpAnimRow = NAME_None;
-  }
+FPlayerKeyframe AParkourGameCharacter::BP_CreateKeyframe_Implementation(const FPlayerKeyframe& Keyframe)
+{
+  return Keyframe;
+}
+
+bool AParkourGameCharacter::BP_ReplayKeyframe_Implementation(const FPlayerKeyframe& Keyframe)
+{
+  return true;
 }
 
 void AParkourGameCharacter::Tick(float DeltaSeconds)
@@ -1032,15 +1047,16 @@ void AParkourGameCharacter::OnRagdollEvent()
   Server_DropBall(EHandSideEnum::HS_Right);
 }
 
-bool AParkourGameCharacter::CreateKeyframe_Implementation(FPlayerKeyframe& Keyframe)
+bool AParkourGameCharacter::CreateKeyframe(FPlayerKeyframe& Keyframe)
 {
   Keyframe.Velocity = GetVelocity();
   Keyframe.IsFullRagdoll = m_RagdollState[(int32)EBodyPart::MAX] > 0;
   Keyframe.IsInAir = !GetCharacterMovement()->IsMovingOnGround();
+  Keyframe = BP_CreateKeyframe(Keyframe);
   return true;
 }
 
-bool AParkourGameCharacter::ReplayKeyframe_Implementation(const FPlayerKeyframe& Keyframe)
+bool AParkourGameCharacter::ReplayKeyframe(const FPlayerKeyframe& Keyframe)
 {
   if (Keyframe.IsFullRagdoll != m_RagdollState[(int32)EBodyPart::MAX])
   {
@@ -1051,7 +1067,7 @@ bool AParkourGameCharacter::ReplayKeyframe_Implementation(const FPlayerKeyframe&
   Replay_Velocity = Keyframe.Velocity;
   Replay_IsInAir = Keyframe.IsInAir;
 
-  return true;
+  return BP_ReplayKeyframe(Keyframe);
 }
 
 void AParkourGameCharacter::InitialiseReplayActor_Implementation(AParkourGameCharacter* ReplayActor)
@@ -1436,10 +1452,18 @@ void AParkourGameCharacter::OnRep_RagdollState()
 		EnablePhysicalAnimation(true);
 
 
-    if (HasAuthority() && !isRolling)
+    if (!isRolling || !isFlipping)
     {
-      StandUpAnimRow = ChooseStandUpAnimation(StandUpDir);
-      OnRep_StandUpAnimRow();
+      FName StandUpAnimRow = ChooseStandUpAnimation(StandUpDir);
+
+      if (StandUpAnimRow == NAME_None) return;
+
+      USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
+      FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
+      UCapsuleComponent* Capsule = GetCapsuleComponent();
+      Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, .0));
+
+      PlayStandUpAnimation(StandUpAnimRow);
     }
 	}
 	for (int32 i = 0; i < (int32)EBodyPart::MAX; ++i)
@@ -1500,19 +1524,6 @@ void AParkourGameCharacter::OnRep_VaultData()
 			m_VaultData[i].ArmSpring->Initialise(FVector::ZeroVector, FVector::ZeroVector);
 		}
 	}
-}
-
-void AParkourGameCharacter::OnRep_StandUpAnimRow()
-{
-  if (StandUpAnimRow == NAME_None) return;
-  
-  USkeletalMeshComponent* PlayerMesh = GetSkeletalMesh();
-  FVector SocketLocation = PlayerMesh->GetSocketLocation(UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart::Pelvis));
-  UCapsuleComponent* Capsule = GetCapsuleComponent();
-  Capsule->SetWorldLocation(SocketLocation + FVector(0.0, 0.0, .0));
-  
-  if (!isFlipping)
-	PlayStandUpAnimation();
 }
 
 void AParkourGameCharacter::RollRecoverWindowEnded()
