@@ -484,7 +484,7 @@ public:
 
   void EnableRolling(bool Enable) { bRollingEnabled = Enable; }
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics", Replicated)
 	bool isVaulting = false;
 
 
@@ -559,7 +559,7 @@ private:
 
 	// Function called when the client recieves an update to the ragdoll state
 	UFUNCTION()
-	void OnRep_Vault(EHandSideEnum Hand);
+	void UpdateVault(EHandSideEnum Hand);
 	
 	// Function called when the client recieves an update to the ragdoll state
 	UFUNCTION()

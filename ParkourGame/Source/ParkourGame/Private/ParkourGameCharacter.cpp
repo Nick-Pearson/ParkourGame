@@ -256,6 +256,7 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(AParkourGameCharacter, m_RagdollState);
 	DOREPLIFETIME(AParkourGameCharacter, m_GripData);
+  DOREPLIFETIME(AParkourGameCharacter, isVaulting);
   DOREPLIFETIME(AParkourGameCharacter, isRolling);
   DOREPLIFETIME(AParkourGameCharacter, isFlipping);
 }
@@ -926,21 +927,20 @@ void AParkourGameCharacter::Server_Vault_Implementation(EHandSideEnum Hand)
 	//GetCharacterMovement()->Velocity = (facing.Vector() * 100);
 	Server_EndGrip(EHandSideEnum::HS_Left);
 	Server_EndGrip(EHandSideEnum::HS_Right);
-	isVaulting = true;
-	OnRep_Vault(Hand);
+	UpdateVault(Hand);
 }
 
 void AParkourGameCharacter::EndVaultAnim() {
 	isVaulting = false;
 }
 
-void AParkourGameCharacter::OnRep_Vault(EHandSideEnum Hand) {
+void AParkourGameCharacter::UpdateVault(EHandSideEnum Hand) {
 	FGripData& Data = m_GripData[(int32)Hand];
 
 	FVector pathToActor = Data.gripTarget - GetSkeletalMesh()->GetBoneLocation(Hand == EHandSideEnum::HS_Left ? FParkourFNames::Bone_Hand_L : FParkourFNames::Bone_Hand_R);
 	float DistSqrd = 2.5 * pathToActor.Size();
 	FRotator facing = GetControlRotation();
-
+  isVaulting = true;
 	facing.SetComponentForAxis(EAxis::Y, 0.f);
 	FLatentActionInfo info;
 	info.CallbackTarget = this;
