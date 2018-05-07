@@ -260,6 +260,12 @@ void AParkourGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
   DOREPLIFETIME(AParkourGameCharacter, isFlipping);
 }
 
+FVector AParkourGameCharacter::GetVelocity() const
+{
+  if (IsFullRagdoll()) return GetSkeletalMesh()->GetComponentVelocity();
+  return Super::GetVelocity();
+}
+
 void AParkourGameCharacter::FellOutOfWorld(const class UDamageType& dmgType)
 {
   if (HasAuthority())
@@ -386,10 +392,19 @@ void AParkourGameCharacter::Tick(float DeltaSeconds)
 	}
 	
   // OWNING CLIENT ONLY
-  if (Role == ROLE_AutonomousProxy && !AutoStandUpHandle.IsValid() && IsFullRagdoll() && (GetVelocity().Z) < 2.0f)
+  if (Role == ROLE_AutonomousProxy && IsFullRagdoll() && GetVelocity().SizeSquared() < 100.0f)
   {
-    GetWorld()->GetTimerManager().SetTimer(AutoStandUpHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), GetUpDelay, false);
+    AutoStandUpTime -= DeltaSeconds;
+    if (AutoStandUpTime < 0.0f)
+    {
+      StandUp();
+      AutoStandUpTime = 0.2f;
+    }
 	}
+  else
+  {
+    AutoStandUpTime = GetUpDelay;
+  }
 
 	// tick the physics as often as is specified
 	m_PhysicsClock += DeltaSeconds;
@@ -1102,14 +1117,12 @@ void AParkourGameCharacter::LogoutPlayer()
 
 void AParkourGameCharacter::StandUp()
 {
-  if (!IsFullRagdoll() || GetSkeletalMesh()->GetComponentVelocity().Z < -5.0f)
+  if (!IsFullRagdoll() || GetVelocity().SizeSquared() > 100.0f)
   {
-    GetWorld()->GetTimerManager().SetTimer(AutoStandUpHandle, FTimerDelegate::CreateUObject(this, &AParkourGameCharacter::StandUp), GetUpDelay, false);
     return;
   }
 
   FVector SocketLocation = GetSkeletalMesh()->GetSocketLocation(FParkourFNames::Bone_Pelvis);
-  AutoStandUpHandle.Invalidate();
   Server_StandUp(SocketLocation);
 }
 
@@ -1264,7 +1277,7 @@ bool AParkourGameCharacter::Server_StandUp_Validate(FVector ClientSideLocation)
 }
 
 void AParkourGameCharacter::Server_StandUp_Implementation(FVector ClientSideLocation)
-{
+{    
   SetFullRagdoll(false);
   FVector AdjustedLocation = ClientSideLocation;
 

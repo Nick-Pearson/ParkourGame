@@ -212,6 +212,7 @@ public:
 	virtual void PostInitializeComponents() override;
 	virtual void EndPlay(EEndPlayReason::Type Reason) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+  virtual FVector GetVelocity() const override;
 
 	TSharedPtr<class FSingletonHelper> SingletonHelper;
 
@@ -247,7 +248,7 @@ public:
 	float BodyMass = 75.0f;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
-  float GetUpDelay = 1.2f;
+  float GetUpDelay = 0.3f;
   
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
   float RollDuration = 0.9f;
@@ -600,6 +601,7 @@ private:
   bool bWasSliding = false;
 
   float StopRollingDelay = 1.0f;
+  float AutoStandUpTime = 0.0f;
 
   bool bRollingEnabled = true;
 };
