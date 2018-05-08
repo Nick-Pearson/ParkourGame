@@ -38,12 +38,6 @@ AReplayManager::AReplayManager()
 	PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
-void AReplayManager::BeginPlay()
-{
-	FGameModeEvents::GameModePostLoginEvent.AddUObject(this, &AReplayManager::OnPlayerLogin);
-	FGameModeEvents::GameModeLogoutEvent.AddUObject(this, &AReplayManager::OnPlayerLogout);
-}
-
 void AReplayManager::Tick(float DeltaSeconds)
 {
 	if (!bIsRecording && !bIsReplaying)
@@ -215,29 +209,6 @@ void AReplayManager::StopRecording()
   m_KeyframeData.Empty();
 
   OnRecordingEnded.Broadcast();
-}
-
-void AReplayManager::OnPlayerLogin(AGameModeBase* GameMode, APlayerController* NewPlayer)
-{
-  if (!bIsRecording || !NewPlayer || !NewPlayer->PlayerState) return;
-
-  AParkourGameCharacter* Character = Cast<AParkourGameCharacter>(NewPlayer->GetPawn());
-  if (!Character) return;
-
-  SetupNewPlayer(NewPlayer, Character);
-}
-
-void AReplayManager::OnPlayerLogout(AGameModeBase* GameMode, AController* Exiting)
-{
-  if (!Exiting) return;
-
-  int32 PlayerDataIdx = m_KeyframeData.FindLastByPredicate([&](const FPlayerReplayData& Data) {
-    return Data.PlayerController == Exiting;
-  });
-
-  if (PlayerDataIdx == INDEX_NONE) return;
-
-  m_KeyframeData.RemoveAtSwap(PlayerDataIdx);
 }
 
 void AReplayManager::RecordKeyframe(FPlayerReplayData& Player, float WorldTime)

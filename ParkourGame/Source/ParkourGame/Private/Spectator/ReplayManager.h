@@ -72,8 +72,6 @@ public:
 
 	AReplayManager();
 
-	virtual void BeginPlay() override;
-
 	virtual void Tick(float DeltaSeconds) override;
 
 	void SetRecording(bool bShouldRecord);
@@ -119,9 +117,6 @@ private:
 
 	void StartRecording();
 	void StopRecording();
-
-	void OnPlayerLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
-	void OnPlayerLogout(AGameModeBase* GameMode, AController* Exiting);
 
 	void RecordKeyframe(FPlayerReplayData& Player, float WorldTime);
 	void CreateKeyframe(AActor* Actor, FPlayerKeyframe& outKeyframe, float WorldTime);

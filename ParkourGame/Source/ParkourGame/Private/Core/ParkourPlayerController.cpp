@@ -50,3 +50,16 @@ void AParkourPlayerController::Net_StartReplay_Implementation()
 {
   FParkourSpectatorBroadcasts::StartActionReplay.Broadcast(GetWorld());
 }
+
+void AParkourPlayerController::SetPawn(APawn* InPawn)
+{
+  Super::SetPawn(InPawn);
+
+  if (AParkourGameCharacter* Char = Cast<AParkourGameCharacter>(InPawn))
+  {
+    AReplayManager* Replay = Char->SingletonHelper->GetSingletonObject<AReplayManager>(GetWorld());
+
+    if (Replay)
+      Replay->RegisterActorForReplay(Char);
+  }
+}

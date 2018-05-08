@@ -28,4 +28,7 @@ public:
 
   UFUNCTION(NetMulticast, Unreliable)
   void Net_StartReplay();
+
+  virtual void SetPawn(APawn* InPawn) override;
+
 };
