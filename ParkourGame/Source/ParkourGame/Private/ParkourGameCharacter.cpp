@@ -934,6 +934,11 @@ void AParkourGameCharacter::EndVaultAnim() {
 	isVaulting = false;
 }
 
+bool AParkourGameCharacter::IsAutonomousProxy() const
+{
+  return Role == ROLE_AutonomousProxy;
+}
+
 void AParkourGameCharacter::UpdateVault(EHandSideEnum Hand) {
 	FGripData& Data = m_GripData[(int32)Hand];
 
@@ -1552,10 +1557,10 @@ void AParkourGameCharacter::CapsuleToRagdoll()
 		UCapsuleComponent* Capsule = GetCapsuleComponent();
 
 		FHitResult OutHit;
-		FVector Start = (SocketLocation); //(Capsule->GetComponentLocation());
+		FVector Start = SocketLocation; //(Capsule->GetComponentLocation());
 
 		FVector DownVector = (Capsule->GetUpVector()) * -1;
-		FVector End = ((DownVector * 1000.f) + Start);
+		FVector End = ((DownVector * 100.f) + Start);
 		FCollisionQueryParams CollisionParams;
 
 		bool bFoundFloor;

@@ -22,6 +22,12 @@ void ASpectatorCameraActor::Tick(float DeltaSeconds)
 	const FVector TargetLoc = TargetPtr->GetActorLocation();
 	const FVector CameraLoc = GetActorLocation();
 
+  if (const AParkourGameCharacter* Char = Cast<AParkourGameCharacter>(TargetPtr))
+  {
+    // dont follow glitchy ragdoll capsule
+    if (Char->IsFullRagdoll()) return;
+  }
+
 	SetActorRotation(UKismetMathLibrary::FindLookAtRotation(CameraLoc, TargetLoc));
 
   const float Dist = (CameraLoc - TargetLoc).Size();

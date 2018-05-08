@@ -244,6 +244,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Physics")
 	void EndVaultAnim();
 
+  UFUNCTION(BlueprintPure, Category = "Role")
+  bool IsAutonomousProxy() const;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	float BodyMass = 75.0f;
 
