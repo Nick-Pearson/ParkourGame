@@ -70,6 +70,11 @@ void AReplayManager::Tick(float DeltaSeconds)
 	{
 		UpdateReplay(CurrentTime);
 	}
+
+  for (TActorIterator<AParkourGameCharacter> It(GetWorld()); It; ++It)
+  {
+    SetupNewPlayer((*It)->GetController(), (*It));
+  }
 }
 
 void AReplayManager::SetRecording(bool bShouldRecord)
@@ -360,6 +365,13 @@ void AReplayManager::UpdatePlayerReplay(FPlayerReplayData& Player, float ReplayT
 
 void AReplayManager::SetupNewPlayer(AController* Controller, AActor* Player)
 {
+  // ensure no duplicates
+  FPlayerReplayData* DataPtr = m_KeyframeData.FindByPredicate([&](const FPlayerReplayData& Data) {
+    return Data.RealActor == Player;
+  });
+
+  if (DataPtr) return;
+
   FPlayerReplayData& NewEntry = m_KeyframeData[m_KeyframeData.AddDefaulted()];
 
   NewEntry.PlayerController = Controller;

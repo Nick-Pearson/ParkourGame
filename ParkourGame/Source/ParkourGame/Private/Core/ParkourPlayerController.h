@@ -31,4 +31,7 @@ public:
 
   virtual void SetPawn(APawn* InPawn) override;
 
+protected:
+  virtual void BeginPlay() override;
+
 };

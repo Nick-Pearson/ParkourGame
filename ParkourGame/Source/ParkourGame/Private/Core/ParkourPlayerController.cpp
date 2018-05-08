@@ -63,3 +63,13 @@ void AParkourPlayerController::SetPawn(APawn* InPawn)
       Replay->RegisterActorForReplay(Char);
   }
 }
+
+void AParkourPlayerController::BeginPlay()
+{
+  Super::BeginPlay();
+
+  if (AParkourGameCharacter* Char = Cast<AParkourGameCharacter>(GetPawn()))
+  {
+    Cast<AParkourGameState>(GetWorld()->GetGameState())->Net_RegisterForReplay(Char);
+  }
+}

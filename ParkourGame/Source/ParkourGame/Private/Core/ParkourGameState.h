@@ -24,6 +24,9 @@ public:
   UFUNCTION(BlueprintCallable, NetMulticast, Unreliable, Category = "Audio")
   void Net_PlayAnnouncerSound(EAnnouncerSound Sound);
 
+  UFUNCTION(NetMulticast, Reliable)
+  void Net_RegisterForReplay(AActor* Actor);
+
   UFUNCTION(BlueprintImplementableEvent, Category = "Audio")
   void PlayAnnouncerSound(EAnnouncerSound Sound);
 
