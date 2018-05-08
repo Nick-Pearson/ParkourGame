@@ -5,7 +5,7 @@
 #include "GameVersion.generated.h"
 
 #define GAME_VERSION_MAJOR 0
-#define GAME_VERSION_MINOR 10
+#define GAME_VERSION_MINOR 11
 #define GAME_VERSION_PATCH 0
 
 USTRUCT(BlueprintType)

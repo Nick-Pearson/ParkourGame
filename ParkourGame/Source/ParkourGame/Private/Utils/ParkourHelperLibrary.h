@@ -24,5 +24,9 @@ public:
 	// Returns the set of (one or more) bones that make up a body part
 	UFUNCTION(BlueprintPure, Category = "Parkour|Skeleton")
 	static void GetBoneChainForBodyPart(EBodyPart Part, TArray<FName>& outChain);
-	
+
+
+
+  UFUNCTION(BlueprintPure, Category = "Lobby")
+    static bool IsValidPlayerName(const FString& Name);
 };

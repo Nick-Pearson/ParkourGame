@@ -1,5 +1,6 @@
 #include "ParkourHelperLibrary.h"
 #include "ParkourFNames.h"
+#include "Regex.h"
 
 FName UParkourHelperLibrary::GetRootBoneForBodyPart(EBodyPart Part)
 {
@@ -43,4 +44,18 @@ void UParkourHelperLibrary::GetBoneChainForBodyPart(EBodyPart Part, TArray<FName
 		outChain = TArray<FName>({ FParkourFNames::Bone_Pelvis });
 		break;
 	}
+}
+
+
+bool UParkourHelperLibrary::IsValidPlayerName(const FString& Name)
+{
+  if (Name.IsEmpty()) return false;
+
+  const FRegexPattern myPattern(TEXT("^[a-z,A-Z,0-9,_]+"));
+  FRegexMatcher myMatcher(myPattern, *Name);
+
+  myMatcher.FindNext();
+
+  return myMatcher.GetMatchBeginning() == 0 && (myMatcher.GetMatchEnding() == Name.Len());
+
 }
