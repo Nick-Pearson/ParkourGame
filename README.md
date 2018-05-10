@@ -1,39 +1,30 @@
-# Parkour Project
+# Full Metal Runners
+Full Metal Runners is a physics-based sports game with large-scale multiplayer built on top of a variety of different animation systems. It was developed as part of the University of Bristol Computer Science course 3rd year project (COMS30400).
 
-Physics-Driven Multiplayer Parkour Game
+![Final Game Screenshot](screenshot.jpg)
 
 ## Installation
+
+Prequistes:
+* A git installation that includes the git LFS extension. Windows users are also reccomended to install a git credentials manager due to a known bug with git LFS
+* Unreal engine 4.18 installation
+* (Windows users) An up-to-date Visual Studio installation
 
 1. Clone the repository
 
 ``` bash
-$ git clone https://github.com/Nick-Pearson/ParkourGame.git
+$ git lfs clone https://github.com/Nick-Pearson/ParkourGame.git
 ```
-
-**NOTE:** As unreal uses many binary files we are using git Large File Storage to handle these, if you cannot sync properly check you have git LFS installed and working - on windows there is
-a known issue where you will need a credential manager to sync properly (git credential cache is an option for this)
-
-### IDE Workflow
-
-IDE Workflow runs the whole editor out of an IDE
 
 2. Navigate to /ParkourGame/, and right click on ParkourGame.uproject. You should see an option to "Generate project files" for Visual Studio or XCode
 
-3. Open the solution file generated and build, once a build is sucessful the Unreal Editor will appear
+3. Open the __ParkourGame.sln__ which will launch Visual Studio
 
-### Editor Workflow
+4. Build and run the project using the Local Windows Debugger (press F5)
 
-You can run the editor without IDE, may be useful for smaller changes or on low powered machines
+5. Once a build is sucessful the Unreal Editor will appear with the project already loaded for use
 
-2. Launch Unreal Engine (4.18) from the Epic Games Launcher
-
-3. In the project selector browse to the /ParkourGame/ folder and select ParkourGame.uproject
-
-4. When the editor appears you will be able to run like normal, you can edit code and use the Editor's built in hot-reload compiler to make changes (this can be unstable and often a full editor reload is required)
-
-5. (optional) If you later open an IDE with the game solution you can use the Attach to Process tool to link the debugger directly to the editor
-
-## Link Unreal to Git
+## Link Unreal to Git (optional)
 
 Unreal can show version control information in the Editor
 
